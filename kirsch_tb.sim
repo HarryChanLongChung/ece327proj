@@ -1,0 +1,65 @@
+set period     [ examine -radix decimal {sim:/kirsch_tb/period} ]
+set bubbles    [ examine -radix decimal {sim:/kirsch_tb/bubbles} ]
+set num_pixels [ expr 256 * 256 ]
+set run_time   [ expr ($num_pixels + 100) * $period * ($bubbles + 1) ]
+
+echo bubbles=$bubbles
+echo runtime=$run_time
+
+if { $gui_mode } {
+  #------------------------------------------------------
+  # add waves only if in gui mode
+
+  add wave                 sim:/kirsch_tb/clk
+  add wave                 sim:/kirsch_tb/reset
+  add wave                 sim:/kirsch_tb/i_valid
+  add wave -radix unsigned sim:/kirsch_tb/i_pixel
+
+  if { $sim_mode eq "PROG_MODE" } then {
+    #------------------------------------------
+    # signals that are traced in --prog mode
+    # uncomment the lines below and 
+    # add a signal name from your lab3.vhd to the end of each line below
+    # 
+    # add wave -color "cornflower blue" -radix unsigned 
+    # add wave -color "coral"           -radix decimal  
+    # add wave -color "slate blue"                      
+    #------------------------------------------
+  } else {
+    #------------------------------------------
+    # signals that are traced in --chip and --logic mode
+    #------------------------------------------
+  }
+  
+  #------------------------------------------------------
+  # additional signals that are traced in all modes
+  #
+  
+  add wave                 sim:/kirsch_tb/o_mode
+  add wave -radix unsigned sim:/kirsch_tb/o_row
+  add wave -radix unsigned sim:/kirsch_tb/o_col
+  add wave                 sim:/kirsch_tb/o_valid
+  add wave                 sim:/kirsch_tb/o_edge
+  add wave                 sim:/kirsch_tb/o_dir
+  #------------------------------------------------------
+
+}
+#----------------------------------------------------------------------
+# code to run in both command line and gui mode
+
+run $run_time ns
+# run 11 ms
+
+#----------------------------------------------------------------------
+# if in gui mode, then zoom to see the complete simulation trace
+# if in command line mode, exit
+
+if { $gui_mode } {
+  wave zoom full
+} else {  
+  exit
+}
+
+#----------------------------------------------------------------------
+
+
