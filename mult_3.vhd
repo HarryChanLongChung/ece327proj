@@ -9,7 +9,6 @@ end mult_3;
 
 architecture main of mult_3  is
 begin
-  i <= i & '0';
-  o <= i + i;
+  o <= i + (i & '0');
 
 end architecture;
