@@ -13,6 +13,12 @@ package ostate_pkg is
   constant firstFill    : state_ty := "01";
   constant inputAndCount: state_ty := "10";
   constant result       : state_ty := "11";
+
+  subtype cal_state_ty is std_logic_vector(2 downto 0);
+  constant cycle_00 : state_ty := "00";
+  constant cycle_01 : state_ty := "01";
+  constant cycle_02 : state_ty := "10";
+  constant cycle_03 : state_ty := "11";
 end ostate_pkg;
 
 library ieee;
@@ -40,26 +46,20 @@ end kirsch;
 
 architecture main of kirsch is
   signal state : state_ty := resetState;
+  signal cycle : cal_state_ty := cycle_00;
 
   signal col_index  : unsigned(7 downto 0) := "00000000";
   signal row_index  : unsigned(7 downto 0) := "00000000";
 
-  signal cycle : unsigned(2 downto 0) := "000";
-  -- cycle 0: max(b,g)=r0,     max(a,d)=r1,     a+h=r2,        b+c=r3,      d+e=r4
-  -- cycle 1: max(c,f)=r0,     max(e,h)=r1,     r0+r2=r5,    r1+r3=r6,  f+g=r7
-  -- cycle 2: max(r5,r6)=r0,                   r2+r3=r2,    r0+r4=r3,  r1+r7=r5, 
-  -- cycle 3: max(r1,r3)=r0, max(r2,r4)=r2
-  -- cycle 4: max(r0,r4)=r0, max(r2,r7)=r2
-  -- cycle 5: r0+"000"=r0, r2+"0"+r2=r2
-  -- cycle 6: r0-r2=r2
-  -- cycle 7: CMP(r2, 383)
   signal max0_val  : unsigned(9 downto 0);
   signal max0_cmp  : std_logic;
+
   signal max0_a    : unsigned(9 downto 0);
   signal max0_b    : unsigned(9 downto 0);
 
   signal max1_val  : unsigned(9 downto 0);
   signal max1_cmp  : std_logic;
+
   signal max1_a    : unsigned(9 downto 0);
   signal max1_b    : unsigned(9 downto 0);
 
@@ -77,13 +77,18 @@ architecture main of kirsch is
   signal rg : std_logic_vector(7 downto 0);
   signal rh : std_logic_vector(7 downto 0);
 
+  signal r0 : std_logic_vector(7 downto 0);
+  signal r1 : std_logic_vector(8 downto 0);
+  signal r2 : std_logic_vector(9 downto 0);
+  signal r3 : std_logic_vector(9 downto 0);
+  signal r4 : std_logic_vector(11 downto 0);
+  signal r_out : std_logic_vector(12 downto 0);
+
   signal row1_read : std_logic_vector(7 downto 0);
   signal row2_read : std_logic_vector(7 downto 0);
   signal row3_read : std_logic_vector(7 downto 0);
-  
 
   signal o_cal: integer;
-
   signal cnt:  unsigned(7 downto 0) := "00000000";
 begin
   row0: entity WORK.mem
@@ -237,19 +242,60 @@ end process;
 process calcDeriv
 begin
 wait until rising_edge(clk);
-  if (reset) then 
+  if (reset = '1') then 
+    -- prep for the cycle_00
+    max0_a <= rb;
+    max0_b <= rg;
+
+    max1_a <= r3;
+    max1_b <= r2;
+
+    cycle <= cycle_00;
   end if
 
-  if (rdy_calc) then 
+  if (rdy_calc) then
+    r0 <= max0_val;
+    r3 <= max1_val;
+
+    r2 <= r0 + r1;
+    r4 <= r2 + r4;
+
     case cycle is 
-      when "000" => 
-      when "001" => 
-      when "010" => 
-      when "011" => 
-      when "100" => 
-      when "101" => 
-      when "110" => 
-      when "111" => 
+      when cycle_00 => 
+        max0_a <= ra;
+        max0_b <= rd;
+
+        r1 <= ra + rh;
+        r4 <= r2 + r4;
+
+        cycle <= cycle_01;
+      when cycle_01 => 
+        max0_a <= rc;
+        max0_b <= rf;
+
+        r3 <= r2;
+
+        r1 <= rb + rc;
+        r4 <= r2 + r4;
+
+        cycle <= cycle_02;
+      when cycle_02 => 
+        max0_a <= re;
+        max0_b <= rh;
+
+        r1 <= re + rd;
+        r3 <= r2;
+        r4 <= r2;
+
+        r_out <= r3&'00' - r4&'0' - r4);
+        cycle <= cycle_03;
+      when cycle_03 => 
+        max0_a <= rb;
+        max0_b <= rg;
+
+        r1 <= rf + rg;
+        o_edge <= (r_out > to_unsigned(383, 12));
+        cycle <= cycle_00;
     end case;
   end if;
 end process;
