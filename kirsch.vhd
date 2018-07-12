@@ -65,6 +65,7 @@ architecture main of kirsch is
 
   signal rdy_calc  : std_logic := '0';
   signal rdy_assign  : std_logic := '0';
+  signal first_process  : std_logic := '1';
 
   signal row_wr_en  : unsigned(2 downto 0) := "000";
 
@@ -262,40 +263,48 @@ wait until rising_edge(clk);
 
     case cycle is 
       when cycle_00 => 
+        cycle <= cycle_01;
         max0_a <= ra;
         max0_b <= rd;
 
         r1 <= ra + rh;
         r4 <= r2 + r4;
-
-        cycle <= cycle_01;
       when cycle_01 => 
+        cycle <= cycle_02;
+
         max0_a <= rc;
         max0_b <= rf;
-
         r3 <= r2;
-
         r1 <= rb + rc;
         r4 <= r2 + r4;
-
-        cycle <= cycle_02;
       when cycle_02 => 
+        cycle <= cycle_03;
+
         max0_a <= re;
         max0_b <= rh;
-
         r1 <= re + rd;
         r3 <= r2;
         r4 <= r2;
 
         r_out <= r3&'00' - r4&'0' - r4);
-        cycle <= cycle_03;
       when cycle_03 => 
+        cycle <= cycle_00;
+
         max0_a <= rb;
         max0_b <= rg;
-
         r1 <= rf + rg;
-        o_edge <= (r_out > to_unsigned(383, 12));
-        cycle <= cycle_00;
+
+        if (first_process = '1')  then
+          first_process = '0';
+        else 
+          o_valid = '1';
+          o_edge <= (r_out > to_unsigned(383, 12));          
+          
+          -- TODO assign proper output for these
+          -- o_dir  <= 
+          -- o_row  <=
+          -- o_col  <= 
+        end if
     end case;
   end if;
 end process;
