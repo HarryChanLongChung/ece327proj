@@ -86,7 +86,7 @@ architecture main of kirsch is
   signal r2 : unsigned(9 downto 0);
   signal r3 : unsigned(9 downto 0);
   signal r4 : unsigned(11 downto 0);
-  signal r_out : unsigned(12 downto 0);
+  signal r_out : signed(12 downto 0);
 
   signal row0_read : std_logic_vector(7 downto 0);
   signal row1_read : std_logic_vector(7 downto 0);
@@ -174,7 +174,8 @@ wait until rising_edge(clk);
           end if;
 
           -- finished filling up first 2 column on row 2
-          if (col_index >= 2 and row_index >= 2) then
+          -- condition tripped on first run
+          if (col_index >= 2 and row_index = 2) then
             rdy_calc <= '1';
           end if;
             --
@@ -185,6 +186,8 @@ wait until rising_edge(clk);
             rg <= unsigned(i_pixel);
           elsif (col_index = 1) then
             rf <= unsigned(i_pixel);
+          elsif (col_index = 2) then
+            re <= unsigned(i_pixel);
           else 
             -- reassign intermediates
             ra <= rb;
@@ -252,11 +255,11 @@ begin
 wait until rising_edge(clk);
   if (reset = '1') then 
     -- prep for the cycle_00
-    max0_a <= rb;
-    max0_b <= rg;
+    max0_a(rb'range) <= rb;
+    max0_b(rg'range) <= rg;
 
-    max1_a <= r3;
-    max1_b <= r2;
+    max1_a(r3'range) <= r3;
+    max1_b(r2'range) <= r2;
 
     cycle <= cycle_00;
   elsif (rdy_calc) then
@@ -269,42 +272,42 @@ wait until rising_edge(clk);
     case cycle is 
       when cycle_00 => 
         cycle <= cycle_01;
-        max0_a <= ra;
-        max0_b <= rd;
+        max0_a(ra'range) <= ra;
+        max0_b(rd'range) <= rd;
 
-        r1 <= ra + rh;
+        r1(7 downto 0) <= ra + rh;
         r4 <= r2 + r4;
       when cycle_01 => 
         cycle <= cycle_02;
 
-        max0_a <= rc;
-        max0_b <= rf;
+        max0_a(rc'range) <= rc;
+        max0_b(rf'range) <= rf;
         r3 <= r2;
-        r1 <= rb + rc;
+        r1(7 downto 0) <= rb + rc;
         r4 <= r2 + r4;
       when cycle_02 => 
         cycle <= cycle_03;
 
-        max0_a <= re;
-        max0_b <= rh;
-        r1 <= re + rd;
+        max0_a(re'range) <= re;
+        max0_b(rh'range) <= rh;
+        r1(7 downto 0) <= re + rd;
         r3 <= r2;
-        r4 <= r2;
+        r4(r2'range) <= r2;
 
-        r_out <= (r3+"00" - r4+'0' - r4);
+        r_out <= (signed(r3&"000") - signed((r4&'0'+ r4)));
       when cycle_03 => 
         cycle <= cycle_00;
 
-        max0_a <= rb;
-        max0_b <= rg;
-        r1 <= rf + rg;
+        max0_a(rb'range) <= rb;
+        max0_b(rg'range) <= rg;
+        r1(7 downto 0) <= rf + rg;
 
         if (first_process = '1')  then
           first_process <= '0';
         else 
           o_valid <= '1';
           
-          o_edge <= '1' when r_out > to_unsigned(383, 12) else '0';          
+          o_edge <= '1' when (r_out > 383) else '0';          
           
           -- TODO assign proper output for these
           -- o_dir  <= 
