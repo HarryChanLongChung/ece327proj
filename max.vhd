@@ -6,22 +6,27 @@ use ieee.numeric_std_unsigned.all ;
 entity max is
   port (
     i_a, i_b	: in  std_logic_vector(9 downto 0);  -- input a and b
+    i_clk       : in  std_logic;                     -- clk
     o_val       : out std_logic_vector(9 downto 0);  -- output max(a,b)
-    o_cmp       : out std_logic                      -- output 1 or 0
-  );
+    o_eqb       : out std_logic                      -- output 1 or 0
+);
 end max;
 
 architecture main of max is
-begin 
-    if (i_a > i_b) then
-        o_val <= i_a;
-        o_cmp <= '0';
-    else if (i_a < i_b)
-        o_val <= i_b;
-        o_cmp <= '1';
-    else 
-        o_val <= i_b;
-        o_cmp <= '0';
-    end if;
+begin
+    process
+        begin 
+        wait until rising_edge(i_clk);
+            if (i_a > i_b) then
+                o_val <= i_a;
+                o_eqb <= '0';
+            elsif (i_a < i_b) then
+                o_val <= i_b;
+                o_eqb <= '1';
+            else 
+                o_val <= i_a;
+                o_eqb <= '0';
+            end if;
+        end process;
 
 end architecture main;

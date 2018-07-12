@@ -53,13 +53,13 @@ architecture main of kirsch is
   signal col_index  : unsigned(7 downto 0) := "00000000";
   signal row_index  : unsigned(7 downto 0) := "00000000";
 
-  signal max0_val  : unsigned(9 downto 0);
+  signal max0_val  : std_logic_vector(9 downto 0);
   signal max0_cmp  : std_logic;
 
   signal max0_a    : unsigned(9 downto 0);
   signal max0_b    : unsigned(9 downto 0);
 
-  signal max1_val  : unsigned(9 downto 0);
+  signal max1_val  : std_logic_vector(9 downto 0);
   signal max1_cmp  : std_logic;
 
   signal max1_a    : unsigned(9 downto 0);
@@ -124,17 +124,19 @@ begin
   max0: entity WORK.max
     port map (
       o_val => max0_val,
-      o_cmp => max0_cmp,
-      i_a   => max0_a,
-      i_b   => max0_b
+      o_eqb => max0_cmp,
+      i_clk => clk,
+      i_a   => std_logic_vector(max0_a),
+      i_b   => std_logic_vector(max0_b)
     );
 
   max1: entity WORK.max
   port map (
     o_val => max1_val,
-    o_cmp => max1_cmp,
-    i_a   => max1_a,
-    i_b   => max1_b
+    o_eqb => max1_cmp,
+    i_clk => clk,
+    i_a   => std_logic_vector(max1_a),
+    i_b   => std_logic_vector(max1_b)
   );
     
 
@@ -156,7 +158,6 @@ wait until rising_edge(clk);
       when resetState =>
       -- after the reset button is deasserted, go to the idle state
         o_mode <= o_idle;
-        rdy_calc <= '1';
         if (i_valid = '1') then 
           state <= firstFill;
           col_index <= col_index + 1;
@@ -176,7 +177,7 @@ wait until rising_edge(clk);
 
           -- finished filling up first 2 column on row 2
           -- condition tripped on first run
-          if (col_index >= 2 and row_index >= 2) then
+          if (col_index = 1 and row_index = 2) then
             rdy_calc <= '1';
           end if;
             --
@@ -210,11 +211,11 @@ wait until rising_edge(clk);
                 rc <= unsigned(row0_read);
                 rd <= unsigned(row1_read);
               elsif (col_index = 1) then
-                rh <= unsigned(row1_read);
-                ra <= unsigned(row0_read);
-              else 
                 ri <= unsigned(row1_read);
                 rb <= unsigned(row0_read);
+              else 
+              rh <= unsigned(row1_read);
+              ra <= unsigned(row0_read);
               end if;
             when 1 =>
             -- currently writing row 1
@@ -222,11 +223,11 @@ wait until rising_edge(clk);
                 rc <= unsigned(row2_read);
                 rd <= unsigned(row0_read);
               elsif (col_index = 1) then
-                rh <= unsigned(row0_read);
-                ra <= unsigned(row2_read);
-              else 
                 ri <= unsigned(row0_read);
                 rb <= unsigned(row2_read);
+              else 
+                rh <= unsigned(row0_read);
+                ra <= unsigned(row2_read);
               end if;
             when 0 =>
             -- currently writing row 0
@@ -234,11 +235,11 @@ wait until rising_edge(clk);
                 rc <= unsigned(row1_read);
                 rd <= unsigned(row2_read);
               elsif (col_index = 1) then
-                ra <= unsigned(row1_read);
-                rh <= unsigned(row2_read);
-              else 
                 rb <= unsigned(row1_read);
                 ri <= unsigned(row2_read);
+              else 
+                ra <= unsigned(row1_read);
+                rh <= unsigned(row2_read);
               end if;
 	
 	    when others =>
@@ -264,8 +265,8 @@ wait until rising_edge(clk);
 
     cycle <= cycle_00;
   elsif (rdy_calc) then
-    r0 <= max0_val;
-    r3 <= max1_val;
+    r0 <= unsigned(max0_val);
+    r3 <= unsigned(max1_val);
 
     r2 <= r0 + r1;
     r4 <= r2 + r4;
@@ -307,7 +308,6 @@ wait until rising_edge(clk);
           first_process <= '0';
         else 
           o_valid <= '1';
-          
           o_edge <= '1' when (r_out > 383) else '0';          
           
           -- TODO assign proper output for these
