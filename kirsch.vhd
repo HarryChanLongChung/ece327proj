@@ -1,6 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.numeric_std_unsigned.all ;
 
 package ostate_pkg is
   subtype mode_ty is std_logic_vector(1 downto 0);
@@ -21,6 +22,7 @@ use ieee.numeric_std.all;
 use work.util.all;
 use work.kirsch_synth_pkg.all;
 use work.ostate_pkg.all;
+use ieee.numeric_std_unsigned.all ;
 
 entity kirsch is
   port (
@@ -31,7 +33,7 @@ entity kirsch is
     o_valid    : out std_logic;                 
     o_edge     : out std_logic;	                     
     o_dir      : out std_logic_vector(2 downto 0);
-    o_mode     : out mode_ty;
+    o_mode     : out work.ostate_pkg.mode_ty;
     o_row      : out unsigned(7 downto 0);
     o_col      : out unsigned(7 downto 0)
   );  
@@ -39,10 +41,10 @@ end kirsch;
 
 
 architecture main of kirsch is
-  signal state : state_ty := resetState;
+  signal state : work.ostate_pkg.state_ty := resetState;
 
   signal col_index  : unsigned(7 downto 0) := "00000000";
-  signal row_index  : unsigned(7 downto 0) := "00000000";
+  signal row_index  : unsigned(2 downto 0) := "000";
 
   signal cycle : unsigned(2 downto 0) := "000";
   -- cycle 0: max(b,g)=r0,     max(a,d)=r1,     a+h=r2,        b+c=r3,      d+e=r4
@@ -68,19 +70,19 @@ architecture main of kirsch is
 
   signal row_wr_en  : unsigned(2 downto 0) := "000";
 
-  signal ra : std_logic_vector(7 downto 0);
-  signal rb : std_logic_vector(7 downto 0);
-  signal rc : std_logic_vector(7 downto 0);
-  signal rd : std_logic_vector(7 downto 0);
-  signal re : std_logic_vector(7 downto 0);
-  signal rf : std_logic_vector(7 downto 0);
-  signal rg : std_logic_vector(7 downto 0);
-  signal rh : std_logic_vector(7 downto 0);
+  signal ra : unsigned(7 downto 0);
+  signal rb : unsigned(7 downto 0);
+  signal rc : unsigned(7 downto 0);
+  signal rd : unsigned(7 downto 0);
+  signal re : unsigned(7 downto 0);
+  signal rf : unsigned(7 downto 0);
+  signal rg : unsigned(7 downto 0);
+  signal rh : unsigned(7 downto 0);
+  signal ri : unsigned(7 downto 0);
 
+  signal row0_read : std_logic_vector(7 downto 0);
   signal row1_read : std_logic_vector(7 downto 0);
   signal row2_read : std_logic_vector(7 downto 0);
-  signal row3_read : std_logic_vector(7 downto 0);
-  
 
   signal o_cal: integer;
 
@@ -130,7 +132,7 @@ begin
   -- );
     
 
-process io
+process
 begin
 wait until rising_edge(clk);
   if (reset = '1') then
@@ -139,10 +141,10 @@ wait until rising_edge(clk);
     o_valid <= '0';
     o_mode  <= o_reset;
 
-    col_index <= to_unsigned(0, 8)
-    row_index <= to_unsigned(0, 8)
+    col_index <= to_unsigned(0, 8);
+    row_index <= to_unsigned(0, 3);
 
-    row_wr_en <= to_unsigned(1, 3)
+    row_wr_en <= to_unsigned(1, 3);
   else
     case state is
       when resetState =>
@@ -160,22 +162,22 @@ wait until rising_edge(clk);
           -- at the end of any row
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
-            col_index <= to_unsigned(0, 8);
+            col_index <= to_unsigned(0,8);
             row_index <= row_index + 1;
           end if;
 
           -- finished filling up first 2 column on row 2
-          if (col_index >= to_unsigned(2, 8) and row_index >= to_unsigned(2,8)) then
-            rdy_calc <= 1;
+          if (col_index >= 2 and row_index >= 2) then
+            rdy_calc <= '1';
           end if;
             --
           col_index <= col_index + 1;
           
             --update current input
-          if (col_index = '0') then
-            rg <= i_pixel;
-          else if (col_index = '1') then
-            rf <= i_pixel;
+          if (col_index = 0) then
+            rg <= unsigned(i_pixel);
+          elsif (col_index = 1) then
+            rf <= unsigned(i_pixel);
           else 
             -- reassign intermediates
             ra <= rb;
@@ -184,61 +186,65 @@ wait until rising_edge(clk);
             ri <= rd;
             rg <= rf;
             rf <= re;
-            re <= i_pixel;
+            re <= unsigned(i_pixel);
           end if;
 
-          case row_index is
+          case to_integer(unsigned(row_index)) is
             -- row0   a b c
             -- row1   h i d
             -- row2   g f e
             when 2 =>
             -- currently writing row 2
-              if (col_index >=2) then
-                rc <= row0_read;
-                rd <= row1_read;
-              else if (col_index = to_unsigned(0,1)) then
-                rh <= row1_read;
-                ra <= row0_read;
+              if (col_index >= 2) then
+                rc <= unsigned(row0_read);
+                rd <= unsigned(row1_read);
+              elsif (col_index = 1) then
+                rh <= unsigned(row1_read);
+                ra <= unsigned(row0_read);
               else 
-                ri <= row1_read;
-                rb <= row0_read;
+                ri <= unsigned(row1_read);
+                rb <= unsigned(row0_read);
               end if;
             when 1 =>
             -- currently writing row 1
-              if (col_index >=2) then
-                rc <= row2_read;
-                rd <= row0_read;
-              else if (col_index = to_unsigned(0,1)) then
-                rh <= row0_read;
-                ra <= row2_read;
+              if (col_index >= 2) then
+                rc <= unsigned(row2_read);
+                rd <= unsigned(row0_read);
+              elsif (col_index = 1) then
+                rh <= unsigned(row0_read);
+                ra <= unsigned(row2_read);
               else 
-                ri <= row0_read;
-                rb <= row2_read;
+                ri <= unsigned(row0_read);
+                rb <= unsigned(row2_read);
               end if;
             when 0 =>
             -- currently writing row 0
-              if (col_index >=2) then
-                rc <= row1_read;
-                rd <= row2_read;
-              else if (col_index = to_unsigned(0,1)) then
-                ra <= row1_read;
-                rh <= row2_read;
+              if (col_index >= 2) then
+                rc <= unsigned(row1_read);
+                rd <= unsigned(row2_read);
+              elsif (col_index = 1) then
+                ra <= unsigned(row1_read);
+                rh <= unsigned(row2_read);
               else 
-                rb <= row1_read;
-                ri <= row2_read;
+                rb <= unsigned(row1_read);
+                ri <= unsigned(row2_read);
               end if;
-        end case;
+	
+	    when others =>
+              null;
+          end case;
+        end if;
       when others =>
-
+        null;
     end case;
   end if;
 end process;
 
-process calcDeriv
+process
 begin
 wait until rising_edge(clk);
   if (reset) then 
-  end if
+  end if;
 
   if (rdy_calc) then 
     case cycle is 
@@ -249,7 +255,8 @@ wait until rising_edge(clk);
       when "100" => 
       when "101" => 
       when "110" => 
-      when "111" => 
+      when "111" =>
+      when others => 
     end case;
   end if;
 end process;
