@@ -7,34 +7,20 @@ package ostate_pkg is
   constant o_idle:  mode_ty := "10";
   constant o_busy:  mode_ty := "11";
   constant o_reset: mode_ty := "01";
-end ostate_pkg;
 
-package state_pkg is
   subtype state_ty is std_logic_vector(1 downto 0);
   constant resetState   : state_ty := "00";
   constant firstFill    : state_ty := "01";
   constant inputAndCount: state_ty := "10";
   constant result       : state_ty := "11";
-end state_pkg;
+end ostate_pkg;
 
-
-package direction_pkg is
-  subtype direction_ty is std_logic_vector(2 downto 0);
-  constant N  : direction_ty := "010";
-  constant S  : direction_ty := "011";
-  constant E  : direction_ty := "000";
-  constant W  : direction_ty := "001";
-
-  constant NW : direction_ty := "100";
-  constant NE : direction_ty := "110";
-  constant SW : direction_ty := "111";
-  constant SE : direction_ty := "101";
-end direction_pkg;
-
-
-
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 use work.util.all;
 use work.kirsch_synth_pkg.all;
+use work.ostate_pkg.all;
 
 entity kirsch is
   port (
@@ -44,12 +30,12 @@ entity kirsch is
     i_pixel    : in  unsigned(7 downto 0);
     o_valid    : out std_logic;                 
     o_edge     : out std_logic;	                     
-    o_dir      : out direction_ty;
+    o_dir      : out std_logic_vector(2 downto 0);
     o_mode     : out mode_ty;
     o_row      : out unsigned(7 downto 0);
     o_col      : out unsigned(7 downto 0)
   );  
-end entity kirsch;
+end kirsch;
 
 
 architecture main of kirsch is
@@ -127,21 +113,21 @@ begin
       q       => row2_read
     );
 
-  max0: entity WORK.max
-    port map (
-      o_val => max0_val,
-      o_cmp => max0_cmp,
-      i_a   => max0_a,
-      i_b   => max0_b
-    );
+  -- max0: entity WORK.max
+  --   port map (
+  --     o_val => max0_val,
+  --     o_cmp => max0_cmp,
+  --     i_a   => max0_a,
+  --     i_b   => max0_b
+  --   );
 
-  max1: entity WORK.max
-  port map (
-    o_val => max1_val,
-    o_cmp => max1_cmp,
-    i_a   => max1_a,
-    i_b   => max1_b
-  );
+  -- max1: entity WORK.max
+  -- port map (
+  --   o_val => max1_val,
+  --   o_cmp => max1_cmp,
+  --   i_a   => max1_a,
+  --   i_b   => max1_b
+  -- );
     
 
 process io
