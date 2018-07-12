@@ -166,7 +166,7 @@ wait until rising_edge(clk);
       when firstFill =>
       -- need to fill up to at least the first 2 row and the first 2 column of the third row
         o_mode <= o_busy;
-        if (i_valid) then
+        if (i_valid = '1') then
           -- at the end of any row
           col_index <= col_index + 1;
           if (col_index = to_unsigned(255, 8)) then
@@ -177,7 +177,7 @@ wait until rising_edge(clk);
 
           -- finished filling up first 2 column on row 2
           -- condition tripped on first run
-          if (col_index = 1 and row_index = 2) then
+          if (col_index = 2 and row_index = 2) then
             rdy_calc <= '1';
           end if;
             --
@@ -201,11 +201,11 @@ wait until rising_edge(clk);
             re <= unsigned(i_pixel);
           end if;
 
-          case to_integer(unsigned(row_index)) is
+          case to_integer(unsigned(row_wr_en)) is
             -- row0   a b c
             -- row1   h i d
             -- row2   g f e
-            when 2 =>
+            when 4 =>
             -- currently writing row 2
               if (col_index >= 2) then
                 rc <= unsigned(row0_read);
@@ -214,10 +214,10 @@ wait until rising_edge(clk);
                 ri <= unsigned(row1_read);
                 rb <= unsigned(row0_read);
               else 
-              rh <= unsigned(row1_read);
-              ra <= unsigned(row0_read);
+                rh <= unsigned(row1_read);
+                ra <= unsigned(row0_read);
               end if;
-            when 1 =>
+            when 2 =>
             -- currently writing row 1
               if (col_index >= 2) then
                 rc <= unsigned(row2_read);
@@ -229,7 +229,7 @@ wait until rising_edge(clk);
                 rh <= unsigned(row0_read);
                 ra <= unsigned(row2_read);
               end if;
-            when 0 =>
+            when 1 =>
             -- currently writing row 0
               if (col_index >= 2) then
                 rc <= unsigned(row1_read);
@@ -241,9 +241,8 @@ wait until rising_edge(clk);
                 ra <= unsigned(row1_read);
                 rh <= unsigned(row2_read);
               end if;
-	
-	    when others =>
-              null;
+            when others =>
+                    null;
           end case;
         end if;
       when others =>
