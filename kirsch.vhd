@@ -15,11 +15,15 @@ package ostate_pkg is
   constant inputAndCount: state_ty := "10";
   constant result       : state_ty := "11";
 
-  subtype cal_state_ty is std_logic_vector(1 downto 0);
-  constant cycle_00 : state_ty := "00";
-  constant cycle_01 : state_ty := "01";
-  constant cycle_02 : state_ty := "10";
-  constant cycle_03 : state_ty := "11";
+  subtype cal_state_ty is std_logic_vector(2 downto 0);
+  constant cycle_00 : cal_state_ty := "000";
+  constant cycle_01 : cal_state_ty := "001";
+  constant cycle_02 : cal_state_ty := "010";
+  constant cycle_03 : cal_state_ty := "011";
+  constant cycle_04 : cal_state_ty := "100";
+  constant cycle_05 : cal_state_ty := "101";
+  constant cycle_06 : cal_state_ty := "110";
+  constant cycle_07 : cal_state_ty := "111";
 end ostate_pkg;
 
 library ieee;
@@ -87,6 +91,9 @@ architecture main of kirsch is
   signal r3 : unsigned(9 downto 0);
   signal r4 : unsigned(11 downto 0);
   signal r_out : signed(12 downto 0);
+
+  signal ri_row : unsigned(7 downto 0) := "00000000";
+  signal ri_col : unsigned(7 downto 0) := "00000000";
 
   signal row0_read : std_logic_vector(7 downto 0);
   signal row1_read : std_logic_vector(7 downto 0);
@@ -171,7 +178,7 @@ wait until rising_edge(clk);
           col_index <= col_index + 1;
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
-            col_index <= to_unsigned(0,8);
+            col_index <= to_unsigned(0, 8);
             row_index <= row_index + 1;
           end if;
 
@@ -207,6 +214,7 @@ wait until rising_edge(clk);
             -- row2   g f e
             when 2 =>
             -- currently writing row 2
+            -- TODO find out assignment for row and col index
               if (col_index >= 2) then
                 rc <= unsigned(row0_read);
                 rd <= unsigned(row1_read);
@@ -214,11 +222,12 @@ wait until rising_edge(clk);
                 ri <= unsigned(row1_read);
                 rb <= unsigned(row0_read);
               else 
-              rh <= unsigned(row1_read);
-              ra <= unsigned(row0_read);
+                rh <= unsigned(row1_read);
+                ra <= unsigned(row0_read);
               end if;
             when 1 =>
             -- currently writing row 1
+            -- TODO find out assignment for row and col index
               if (col_index >= 2) then
                 rc <= unsigned(row2_read);
                 rd <= unsigned(row0_read);
@@ -231,6 +240,7 @@ wait until rising_edge(clk);
               end if;
             when 0 =>
             -- currently writing row 0
+            -- TODO find out assignment for row and col index
               if (col_index >= 2) then
                 rc <= unsigned(row1_read);
                 rd <= unsigned(row2_read);
@@ -256,17 +266,17 @@ process
 begin
 wait until rising_edge(clk);
   if (reset = '1') then 
-    -- prep for the cycle_00
     max0_a(rb'range) <= rb;
     max0_b(rg'range) <= rg;
 
     max1_a(r3'range) <= r3;
     max1_b(r2'range) <= r2;
-
-    cycle <= cycle_00;
   elsif (rdy_calc) then
     r0 <= unsigned(max0_val);
     r3 <= unsigned(max1_val);
+
+    max1_a(r3'range) <= r3;
+    max1_b(r2'range) <= r2;
 
     r2 <= r0 + r1;
     r4 <= r2 + r4;
@@ -274,11 +284,13 @@ wait until rising_edge(clk);
     case cycle is 
       when cycle_00 => 
         cycle <= cycle_01;
+
         max0_a(ra'range) <= ra;
         max0_b(rd'range) <= rd;
 
         r1(7 downto 0) <= ra + rh;
         r4 <= r2 + r4;
+        
       when cycle_01 => 
         cycle <= cycle_02;
 
@@ -287,6 +299,7 @@ wait until rising_edge(clk);
         r3 <= r2;
         r1(7 downto 0) <= rb + rc;
         r4 <= r2 + r4;
+
       when cycle_02 => 
         cycle <= cycle_03;
 
@@ -297,26 +310,76 @@ wait until rising_edge(clk);
         r4(r2'range) <= r2;
 
         r_out <= (signed(r3&"000") - signed(r4&'0') - signed(r4));
-      when cycle_03 => 
-        cycle <= cycle_00;
 
-        max0_a(rb'range) <= rb;
-        max0_b(rg'range) <= rg;
+      when cycle_03 => 
+        if (i_valid = '1') then
+          cycle <= cycle_04;
+          max0_a(rb'range) <= rb;
+          max0_b(rg'range) <= rg;
+        end if;
+
         r1(7 downto 0) <= rf + rg;
 
         if (first_process = '1')  then
           first_process <= '0';
         else 
           o_valid <= '1';
-          o_edge <= '1' when (r_out > 383) else '0';          
+          o_edge <= '1' when (r_out > to_signed(383, 12)) else '0';          
           
           -- TODO assign proper output for these
           -- o_dir  <= 
           -- o_row  <=
           -- o_col  <= 
         end if;
+
+      when cycle_04 => 
+        cycle <= cycle_01;
+        max0_a(ra'range) <= ra;
+        max0_b(rd'range) <= rd;
+
+        r1(7 downto 0) <= ra + rh;
+        r4 <= r2 + r4;
+
+      when cycle_05 => 
+        cycle <= cycle_02;
+
+        max0_a(rc'range) <= rc;
+        max0_b(rf'range) <= rf;
+        r3 <= r2;
+        r1(7 downto 0) <= rb + rc;
+        r4 <= r2 + r4;
+
+      when cycle_06 => 
+        cycle <= cycle_03;
+
+        max0_a(re'range) <= re;
+        max0_b(rh'range) <= rh;
+        r1(7 downto 0) <= re + rd;
+        r3 <= r2;
+        r4(r2'range) <= r2;
+
+        r_out <= (signed(r3&"000") - signed(r4&'0') - signed(r4));
+
+      when cycle_07 => 
+        cycle <= cycle_00;
+        if (i_valid = '1') then
+          cycle <= cycle_07;
+          max0_a(rb'range) <= rb;
+          max0_b(rg'range) <= rg;
+        end if;
+
+        r1(7 downto 0) <= rf + rg;
+
+        o_valid <= '1';
+        o_edge <= '1' when (r_out > 383) else '0';
+
+        -- TODO assign proper output for these
+        -- o_dir  <= 
+        -- o_row  <=
+        -- o_col  <= 
       when others =>
         null;
+
     end case;
   end if;
 end process;
