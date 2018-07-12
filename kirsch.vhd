@@ -51,7 +51,7 @@ architecture main of kirsch is
   signal cycle : cal_state_ty := cycle_00;
 
   signal col_index  : unsigned(7 downto 0) := "00000000";
-  signal row_index  : unsigned(2 downto 0) := "000";
+  signal row_index  : unsigned(7 downto 0) := "00000000";
 
   signal max0_val  : unsigned(9 downto 0);
   signal max0_cmp  : std_logic;
@@ -92,7 +92,6 @@ architecture main of kirsch is
   signal row1_read : std_logic_vector(7 downto 0);
   signal row2_read : std_logic_vector(7 downto 0);
 
-  signal o_cal: integer;
   signal cnt:  unsigned(7 downto 0) := "00000000";
 begin
   row0: entity WORK.mem
@@ -122,21 +121,21 @@ begin
       q       => row2_read
     );
 
-  -- max0: entity WORK.max
-  --   port map (
-  --     o_val => max0_val,
-  --     o_cmp => max0_cmp,
-  --     i_a   => max0_a,
-  --     i_b   => max0_b
-  --   );
+  max0: entity WORK.max
+    port map (
+      o_val => max0_val,
+      o_cmp => max0_cmp,
+      i_a   => max0_a,
+      i_b   => max0_b
+    );
 
-  -- max1: entity WORK.max
-  -- port map (
-  --   o_val => max1_val,
-  --   o_cmp => max1_cmp,
-  --   i_a   => max1_a,
-  --   i_b   => max1_b
-  -- );
+  max1: entity WORK.max
+  port map (
+    o_val => max1_val,
+    o_cmp => max1_cmp,
+    i_a   => max1_a,
+    i_b   => max1_b
+  );
     
 
 process
@@ -149,7 +148,7 @@ wait until rising_edge(clk);
     o_mode  <= o_reset;
 
     col_index <= to_unsigned(0, 8);
-    row_index <= to_unsigned(0, 3);
+    row_index <= to_unsigned(0, 8);
 
     row_wr_en <= to_unsigned(1, 3);
   else
@@ -157,6 +156,7 @@ wait until rising_edge(clk);
       when resetState =>
       -- after the reset button is deasserted, go to the idle state
         o_mode <= o_idle;
+        rdy_calc <= '1';
         if (i_valid = '1') then 
           state <= firstFill;
           col_index <= col_index + 1;
@@ -167,6 +167,7 @@ wait until rising_edge(clk);
         o_mode <= o_busy;
         if (i_valid) then
           -- at the end of any row
+          col_index <= col_index + 1;
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
             col_index <= to_unsigned(0,8);
@@ -175,11 +176,11 @@ wait until rising_edge(clk);
 
           -- finished filling up first 2 column on row 2
           -- condition tripped on first run
-          if (col_index >= 2 and row_index = 2) then
+          if (col_index >= 2 and row_index >= 2) then
             rdy_calc <= '1';
           end if;
             --
-          col_index <= col_index + 1;
+
           
             --update current input
           if (col_index = 0) then
@@ -294,7 +295,7 @@ wait until rising_edge(clk);
         r3 <= r2;
         r4(r2'range) <= r2;
 
-        r_out <= (signed(r3&"000") - signed((r4&'0'+ r4)));
+        r_out <= (signed(r3&"000") - signed(r4&'0') - signed(r4));
       when cycle_03 => 
         cycle <= cycle_00;
 
