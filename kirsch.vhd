@@ -15,7 +15,7 @@ package ostate_pkg is
   constant inputAndCount: state_ty := "10";
   constant result       : state_ty := "11";
 
-  subtype cal_state_ty is std_logic_vector(2 downto 0);
+  subtype cal_state_ty is std_logic_vector(1 downto 0);
   constant cycle_00 : state_ty := "00";
   constant cycle_01 : state_ty := "01";
   constant cycle_02 : state_ty := "10";
@@ -28,7 +28,7 @@ use ieee.numeric_std.all;
 use work.util.all;
 use work.kirsch_synth_pkg.all;
 use work.ostate_pkg.all;
-use ieee.numeric_std_unsigned.all ;
+use ieee.numeric_std_unsigned.all;
 
 entity kirsch is
   port (
@@ -81,16 +81,16 @@ architecture main of kirsch is
   signal rh : unsigned(7 downto 0);
   signal ri : unsigned(7 downto 0);
 
-  signal r0 : std_logic_vector(7 downto 0);
-  signal r1 : std_logic_vector(8 downto 0);
-  signal r2 : std_logic_vector(9 downto 0);
-  signal r3 : std_logic_vector(9 downto 0);
-  signal r4 : std_logic_vector(11 downto 0);
-  signal r_out : std_logic_vector(12 downto 0);
+  signal r0 : unsigned(9 downto 0);
+  signal r1 : unsigned(9 downto 0);
+  signal r2 : unsigned(9 downto 0);
+  signal r3 : unsigned(9 downto 0);
+  signal r4 : unsigned(11 downto 0);
+  signal r_out : unsigned(12 downto 0);
 
+  signal row0_read : std_logic_vector(7 downto 0);
   signal row1_read : std_logic_vector(7 downto 0);
   signal row2_read : std_logic_vector(7 downto 0);
-  signal row3_read : std_logic_vector(7 downto 0);
 
   signal o_cal: integer;
   signal cnt:  unsigned(7 downto 0) := "00000000";
@@ -259,9 +259,7 @@ wait until rising_edge(clk);
     max1_b <= r2;
 
     cycle <= cycle_00;
-  end if
-
-  if (rdy_calc) then
+  elsif (rdy_calc) then
     r0 <= max0_val;
     r3 <= max1_val;
 
@@ -293,7 +291,7 @@ wait until rising_edge(clk);
         r3 <= r2;
         r4 <= r2;
 
-        r_out <= r3&'00' - r4&'0' - r4);
+        r_out <= (r3+"00" - r4+'0' - r4);
       when cycle_03 => 
         cycle <= cycle_00;
 
@@ -302,16 +300,19 @@ wait until rising_edge(clk);
         r1 <= rf + rg;
 
         if (first_process = '1')  then
-          first_process = '0';
+          first_process <= '0';
         else 
-          o_valid = '1';
-          o_edge <= (r_out > to_unsigned(383, 12));          
+          o_valid <= '1';
+          
+          o_edge <= '1' when r_out > to_unsigned(383, 12) else '0';          
           
           -- TODO assign proper output for these
           -- o_dir  <= 
           -- o_row  <=
           -- o_col  <= 
-        end if
+        end if;
+      when others =>
+        null;
     end case;
   end if;
 end process;
