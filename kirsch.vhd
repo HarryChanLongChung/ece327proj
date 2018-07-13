@@ -77,13 +77,12 @@ architecture main of kirsch is
   signal m31_a, m31_b : std_logic;
 
   signal r0 : unsigned(7 downto 0);
-  signal r3 : unsigned(10 downto 0);
-
   signal r1 : unsigned(8 downto 0);
-  signal r2 : unsigned(10 downto 0);
-  signal r4 : unsigned(13 downto 0);
+  signal r2 : unsigned(9 downto 0);
+  signal r3 : unsigned(9 downto 0);
+  signal r4 : unsigned(12 downto 0);
 
-  signal r_out : signed(13 downto 0);
+  signal r_out : signed(12 downto 0);
 
   signal ri_row_a, ri_row_b : unsigned(7 downto 0) := "00000000";
   signal ri_col_a, ri_col_b : unsigned(7 downto 0) := "00000000";
@@ -176,6 +175,7 @@ wait until rising_edge(clk);
             rdy_calc <= '0';
           elsif (col_index = to_unsigned(1, 8)) then
             rf <= unsigned(i_pixel);
+            rdy_calc <= '0';
           elsif (col_index = to_unsigned(2, 8)) then 
             re <= unsigned(i_pixel);
           else
@@ -259,18 +259,19 @@ wait until rising_edge(clk);
       when cycle_00 => 
         cycle <= cycle_01;
 
-        if rb > rg then 
-          r0 <= rb;
-          m01_a <= '1';
-        else 
+        if rg > rb then 
           r0 <= rg;
           m01_a <= '0';
+        else 
+          r0 <= rb;
+          m01_a <= '1';
         end if;
 
         if r3 > r2 then 
-          r3 <= r2;
+          r3 <= r3;
           m42_b <= '0';
         else 
+          r3 <= r2;
           m42_b <= '1';
         end if;
 
@@ -294,16 +295,17 @@ wait until rising_edge(clk);
 
         if ra > rd then 
           r0 <= ra;
-          m11_a <= '1';
+          m11_a <= '0';
         else 
           r0 <= rd;
-          m11_a <= '0';
+          m11_a <= '1';
         end if;
 
         if r3 > r2 then 
-          r3 <= r2;
+          r3 <= r3;
           m52_b <= '0';
         else 
+          r3 <= r2;
           m52_b <= '1';
         end if;
 
@@ -317,10 +319,10 @@ wait until rising_edge(clk);
 
         if rc > rf then
           r0 <= rc;
-          m21_a <= '1';
+          m21_a <= '0';
         else 
           r0 <= rf;
-          m21_a <= '0';
+          m21_a <= '1';
         end if;
 
         r3 <= r2;
@@ -333,7 +335,7 @@ wait until rising_edge(clk);
                     (m21_b and m42_b and not m52_b) or
                     (m31_b and m52_b);
 
-        r_out <= signed(shift_left(r3, 3) - shift_left(r4, 1) - r4);
+        r_out <= (signed(shift_left(r3, 3)) - signed(shift_left(r4, 1)) - signed(r4));
 
       when cycle_03 => 
         if (i_valid) then
@@ -347,16 +349,17 @@ wait until rising_edge(clk);
 
         if re > rh then 
           r0 <= re;
-          m31_a <= '1';
+          m31_a <= '0';
         else 
           r0 <= rh;
-          m31_a <= '0';
+          m31_a <= '1';
         end if;
 
         if r3 > r2 then 
-          r3 <= r2;
+          r3 <= r3;
           m32_a <= '0';
         else 
+          r3 <= r2;
           m32_a <= '1';
         end if;
 
@@ -385,18 +388,19 @@ wait until rising_edge(clk);
       when cycle_04 => 
         cycle <= cycle_05;
 
-        if rb > rg then 
+        if rg > rb then 
           r0 <= rb;
-          m01_b <= '1';
+          m01_b <= '0';
         else 
           r0 <= rg;
-          m01_b <= '0';
+          m01_b <= '1';
         end if;
 
         if r3 > r2 then 
-          r3 <= r2;
+          r3 <= r3;
           m42_a <= '0';
         else 
+          r3 <= r2;
           m42_a <= '1';
         end if;
 
@@ -421,16 +425,17 @@ wait until rising_edge(clk);
 
         if ra > rd then 
           r0 <= ra;
-          m11_b <= '1';
+          m11_b <= '0';
         else 
           r0 <= rd;
-          m11_b <= '0';
+          m11_b <= '1';
         end if;
 
         if r3 > r2 then 
-          r3 <= r2;
+          r3 <= r3;
           m52_a <= '0';
         else 
+          r3 <= r2;
           m52_a <= '1';
         end if;
 
@@ -444,10 +449,10 @@ wait until rising_edge(clk);
 
         if rc > rf then 
           r0 <= rc;
-          m21_b <= '1';
+          m21_b <= '0';
         else 
           r0 <= rf;
-          m21_b <= '0';
+          m21_b <= '1';
         end if;
         r3 <= r2;
 
@@ -459,7 +464,7 @@ wait until rising_edge(clk);
                     (m21_a and m42_a and not m52_a) or
                     (m31_a and m52_a);
 
-        r_out <= signed(shift_left(r3, 3) - shift_left(r4, 1) - r4);
+        r_out <= (signed(shift_left(r3, 3)) - signed(shift_left(r4, 1)) - signed(r4));
 
       when cycle_07 => 
         if (i_valid) then
@@ -473,16 +478,17 @@ wait until rising_edge(clk);
 
         if re > rh then 
           r0 <= re;
-          m31_b <= '1';
+          m31_b <= '0';
         else 
           r0 <= rh;
-          m31_b <= '0';
+          m31_b <= '1';
         end if;
 
         if r3 > r2 then 
-          r3 <= r2;
+          r3 <= r3;
           m32_b <= '0';
         else 
+          r3 <= r2;
           m32_b <= '1';
         end if;
 
