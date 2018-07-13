@@ -189,30 +189,36 @@ wait until rising_edge(clk);
         end if;
 
       when firstFill =>
-      -- need to fill up to at least the first 2 row and the first 2 column of the third row
+        -- need to fill up to at least the first 2 row and the first 2 column of the third row
         o_mode <= o_busy;
         if (i_valid = '1') then
-          -- at the end of any row
+
           col_index <= col_index + 1;
+
+          -- at the end of any row
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
             col_index <= to_unsigned(0, 8);
             row_index <= row_index + 1;
+            
+            rdy_calc <= '0';
           end if;
 
-          -- finished filling up first 2 column on row 2
-          -- condition tripped on first run
-          if (col_index = 2 and row_index = 2) then
+          -- finished filling up first column on row 2, start calculation
+          if (col_index = 1 and row_index = 2) then
             rdy_calc <= '1';
           end if;
 
-            --update current input
+          -- update current input
           if (col_index = 0) then
             rg <= unsigned(i_pixel);
+            
+            rdy_calc <= '0';
           elsif (col_index = 1) then
             rf <= unsigned(i_pixel);
           elsif (col_index = 2) then
             re <= unsigned(i_pixel);
+
             ri_col_a <= col_index-1;
             ri_row_a <= row_index-1;
           else 
@@ -232,9 +238,9 @@ wait until rising_edge(clk);
             -- row0   a b c
             -- row1   h i d
             -- row2   g f e
+
             when 4 =>
             -- currently writing row 2
-            -- TODO find out assignment for row and col index
               if (col_index >= 2) then
                 rc <= unsigned(row0_read);
                 rd <= unsigned(row1_read);
@@ -245,9 +251,9 @@ wait until rising_edge(clk);
                 rh <= unsigned(row1_read);
                 ra <= unsigned(row0_read);
               end if;
+
             when 2 =>
             -- currently writing row 1
-            -- TODO find out assignment for row and col index
               if (col_index >= 2) then
                 rc <= unsigned(row2_read);
                 rd <= unsigned(row0_read);
@@ -258,9 +264,9 @@ wait until rising_edge(clk);
                 rh <= unsigned(row0_read);
                 ra <= unsigned(row2_read);
               end if;
-            when 1 =>
+            
+            when others => --when 1 =>
             -- currently writing row 0
-            -- TODO find out assignment for row and col index
               if (col_index >= 2) then
                 rc <= unsigned(row1_read);
                 rd <= unsigned(row2_read);
@@ -271,12 +277,13 @@ wait until rising_edge(clk);
                 ra <= unsigned(row1_read);
                 rh <= unsigned(row2_read);
               end if;
-            when others =>
-                    null;
           end case;
+
         end if;
+      
       when others =>
         null;
+
     end case;
   end if;
 end process;
@@ -304,9 +311,6 @@ wait until rising_edge(clk);
 
     case cycle is 
       when cycle_00 => 
-        ri_col_b <= ri_col_a;
-        ri_row_b <= ri_row_a;
-        
         cycle <= cycle_01;
         m01_a <= max0_cmp;
         m42_b <= max1_cmp;
@@ -319,6 +323,9 @@ wait until rising_edge(clk);
         
       when cycle_01 => 
         cycle <= cycle_02;
+        ri_col_b <= ri_col_a;
+        ri_row_b <= ri_row_a;
+
         m11_a <= max0_cmp;
         m52_b <= max1_cmp;
 
@@ -346,7 +353,7 @@ wait until rising_edge(clk);
         r_out <= (signed(r3&"000") - signed(r4&'0') - signed(r4));
 
       when cycle_03 => 
-        if (i_valid = '1') then
+        if (i_valid) then
           cycle <= cycle_04;
           max0_a <= "00"&rb;
           max0_b <= "00"&rg;
@@ -373,14 +380,9 @@ wait until rising_edge(clk);
 
           o_row  <= ri_row_b;
           o_col  <= ri_col_b;        
-
-          -- o_dir  <= 
         end if;
 
       when cycle_04 => 
-        ri_col_b <= ri_col_a;
-        ri_row_b <= ri_row_a;
-
         cycle <= cycle_05;
 
         m42_a <= max1_cmp;
@@ -393,6 +395,9 @@ wait until rising_edge(clk);
         r4 <= r2 + r4;
 
       when cycle_05 =>
+        ri_col_b <= ri_col_a;
+        ri_row_b <= ri_row_a;
+
         cycle <= cycle_06;
         m52_a <= max1_cmp;
         m11_b <= max0_cmp;
@@ -421,9 +426,8 @@ wait until rising_edge(clk);
         r_out <= (signed(r3&"000") - signed(r4&'0') - signed(r4));
 
       when cycle_07 => 
-        cycle <= cycle_00;
         if (i_valid = '1') then
-          cycle <= cycle_07;
+          cycle <= cycle_00;
           max0_a <= "00"&rg;
           max0_b <= "00"&rb;
         end if;
@@ -446,7 +450,6 @@ wait until rising_edge(clk);
 
         o_row  <= ri_row_b;
         o_col  <= ri_col_b;
-        -- o_dir  <= 
 
       when others =>
         null;
