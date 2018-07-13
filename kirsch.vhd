@@ -101,8 +101,11 @@ architecture main of kirsch is
   signal r4 : unsigned(11 downto 0) := "000000000000";
   signal r_out : signed(12 downto 0) := "0000000000000";
 
-  signal ri_row : unsigned(7 downto 0) := "00000000";
-  signal ri_col : unsigned(7 downto 0) := "00000000";
+  signal ri_row_a : unsigned(7 downto 0) := "00000000";
+  signal ri_col_a : unsigned(7 downto 0) := "00000000";
+
+  signal ri_row_b : unsigned(7 downto 0) := "00000000";
+  signal ri_col_b : unsigned(7 downto 0) := "00000000";
 
   signal row0_read : std_logic_vector(7 downto 0);
   signal row1_read : std_logic_vector(7 downto 0);
@@ -196,9 +199,7 @@ wait until rising_edge(clk);
           if (col_index = 2 and row_index = 2) then
             rdy_calc <= '1';
           end if;
-            --
 
-          
             --update current input
           if (col_index = 0) then
             rg <= unsigned(i_pixel);
@@ -206,8 +207,8 @@ wait until rising_edge(clk);
             rf <= unsigned(i_pixel);
           elsif (col_index = 2) then
             re <= unsigned(i_pixel);
-            ri_col <= col_index-1;
-            ri_row <= row_index-1;
+            ri_col_a <= col_index-1;
+            ri_row_a <= row_index-1;
           else 
             -- reassign intermediates
             ra <= rb;
@@ -216,8 +217,8 @@ wait until rising_edge(clk);
             ri <= rd;
             rg <= rf;
             rf <= re;
-            ri_col <= col_index-1;
-            ri_row <= row_index-1;
+            ri_col_a <= col_index-1;
+            ri_row_a <= row_index-1;
             re <= unsigned(i_pixel);
           end if;
 
@@ -293,8 +294,13 @@ wait until rising_edge(clk);
     r2 <= r0 + r1;
     r4 <= r2 + r4;
 
+    o_valid <= '0';
+
     case cycle is 
       when cycle_00 => 
+        ri_col_b <= ri_col_a;
+        ri_row_b <= ri_row_a;
+        
         cycle <= cycle_01;
 
         max0_a <= "00"&ra;
@@ -336,20 +342,23 @@ wait until rising_edge(clk);
         -- check dependency on first process
         o_row <= ri_row;
         o_col <= ri_col;
-        o_valid <= '0';
 
         if (first_process = '1')  then
           first_process <= '0';
         else 
-          o_edge <= '1' when (r_out > to_signed(383, 12)) else '0';          
-          
-          -- TODO assign proper output for these
+          o_valid <= '1';
+          o_edge <= '1' when (r_out > to_signed(383, 12)) else '0';
+
+          o_row  <= ri_row_b
+          o_col  <= ri_col_b          
+
           -- o_dir  <= 
-          -- o_row  <=
-          -- o_col  <= 
         end if;
 
       when cycle_04 => 
+        ri_col_b <= ri_col_a;
+        ri_row_b <= ri_row_a;
+
         cycle <= cycle_05;
 
         max0_a <= "00"&ra;
@@ -376,8 +385,6 @@ wait until rising_edge(clk);
         r3 <= r2;
         r4 <= "00"&r2;
 
-        o_valid <= '1';
-
         r_out <= (signed(r3&"000") - signed(r4&'0') - signed(r4));
 
       when cycle_07 => 
@@ -390,13 +397,13 @@ wait until rising_edge(clk);
 
         r1(7 downto 0) <= rf + rg;
 
-        o_valid <= '0';
+        o_valid <= '1';
         o_edge <= '1' when (r_out > 383) else '0';
 
-        -- TODO assign proper output for these
+        o_row  <= ri_row_b
+        o_col  <= ri_col_b
         -- o_dir  <= 
-        -- o_row  <=
-        -- o_col  <= 
+
       when others =>
         null;
 
