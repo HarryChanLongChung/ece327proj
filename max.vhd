@@ -4,10 +4,12 @@ use ieee.numeric_std.all;
 use ieee.numeric_std_unsigned.all ;
 
 entity max is
+  generic (
+    data_width : natural := 8);
   port (
-    i_a, i_b	: in  std_logic_vector(9 downto 0);  -- input a and b
+    i_a, i_b	: in  std_logic_vector(data_width - 1 downto 0);  -- input a and b
     i_clk       : in  std_logic;                     -- clk
-    o_val       : out std_logic_vector(9 downto 0);  -- output max(a,b)
+    o_val       : out std_logic_vector(data_width - 1 downto 0);  -- output max(a,b)
     o_eqb       : out std_logic                      -- output 1 or 0
 );
 end max;
