@@ -52,15 +52,6 @@ end kirsch;
 
 
 architecture main of kirsch is
-  -- max enetity port signal
-  signal max0_a, max0_b : unsigned(7 downto 0);
-  signal max0_val : std_logic_vector(7 downto 0);
-
-  signal max1_a, max1_b : unsigned(10 downto 0);
-  signal max1_val : std_logic_vector(10 downto 0);
-
-  signal max0_cmp, max1_cmp : std_logic;
-
   -- mem enetity port signal
   signal row0_read, row1_read, row2_read : std_logic_vector(7 downto 0);
   signal row_wr_en : unsigned(2 downto 0) := "100";
@@ -84,6 +75,9 @@ architecture main of kirsch is
   signal m11_a, m11_b : std_logic;
   signal m21_a, m21_b : std_logic;
   signal m31_a, m31_b : std_logic;
+
+  signal r0 : unsigned(7 downto 0);
+  signal r3 : unsigned(10 downto 0);
 
   signal r1 : unsigned(8 downto 0);
   signal r2 : unsigned(10 downto 0);
@@ -120,27 +114,6 @@ begin
       wren    => row_wr_en(2),
       q       => row2_read
     );
-
-  max0: entity WORK.max
-    port map (
-      o_val => max0_val,
-      o_eqb => max0_cmp,
-      i_clk => clk,
-      i_a   => std_logic_vector(max0_a),
-      i_b   => std_logic_vector(max0_b)
-    );
-
-  max1: entity WORK.max
-    generic map (data_width => 11)
-    port map (
-      o_val => max1_val,
-      o_eqb => max1_cmp,
-      i_clk => clk,
-      i_a   => std_logic_vector(max1_a),
-      i_b   => std_logic_vector(max1_b)
-    );
-    
-
 process
 begin
 wait until rising_edge(clk);
@@ -199,15 +172,13 @@ wait until rising_edge(clk);
           -- if we are filling column 0/1, do not start calculation
           if (col_index = to_unsigned(0, 8)) then
             rg <= unsigned(i_pixel);
+
             rdy_calc <= '0';
           elsif (col_index = to_unsigned(1, 8)) then
             rf <= unsigned(i_pixel);
-            rdy_calc <= '0';
           elsif (col_index = to_unsigned(2, 8)) then 
             re <= unsigned(i_pixel);
-          else 
-            re <= unsigned(i_pixel);
-
+          else
             ra <= rb;
             rb <= rc;
             rh <= ri;
@@ -278,19 +249,8 @@ end process;
 process
 begin
 wait until rising_edge(clk);
-  if (reset = '1') then 
-    max0_a <= rg;
-    max0_b <= rb;
-
-    max1_a <=  unsigned(max1_val);
-    max1_b <=  r2;
-  elsif (rdy_calc) then
-    --r0 == unsigned(max0_val);
-    --r3 == unsigned(max1_val);
-    max1_a <= unsigned(max1_val);
-    max1_b <= r2;
-
-    r2 <= "000"&unsigned(max0_val) + r1;
+  if (rdy_calc) then
+    r2 <= "000"&r0 + r1;
     r4 <= r4 + r2;
 
     o_valid <= '0';
@@ -299,11 +259,25 @@ wait until rising_edge(clk);
       when cycle_00 => 
         cycle <= cycle_01;
 
-        m01_a <= max0_cmp;
-        m42_b <= max1_cmp;
+        if rb > rg then 
+          r0 <= rb;
+          m01_a <= '1';
+        else 
+          r0 <= rg;
+          m01_a <= '0';
+        end if;
 
-        max0_a <= ra;
-        max0_b <= rd;
+        if r3 > r2 then 
+          r3 <= r2;
+          m42_b <= '0';
+        else 
+          m42_b <= '1';
+        end if;
+
+        -- m01_a <= max0_cmp;
+        -- m42_b <= max1_cmp;
+        -- max0_a <= ra;
+        -- max0_b <= rd;
 
         r1 <= "0"&ra + rh;
         
@@ -313,25 +287,45 @@ wait until rising_edge(clk);
         ri_col_b <= ri_col_a;
         ri_row_b <= ri_row_a;
 
-        m11_a <= max0_cmp;
-        m52_b <= max1_cmp;
+        -- m11_a <= max0_cmp;
+        -- m52_b <= max1_cmp;
+        -- max0_a <= rc;
+        -- max0_b <= rf;
 
-        max0_a <= rc;
-        max0_b <= rf;
+        if ra > rd then 
+          r0 <= ra;
+          m11_a <= '1';
+        else 
+          r0 <= rd;
+          m11_a <= '0';
+        end if;
+
+        if r3 > r2 then 
+          r3 <= r2;
+          m52_b <= '0';
+        else 
+          m52_b <= '1';
+        end if;
 
         r1 <= "0"&rb + rc;
 
       when cycle_02 => 
         cycle <= cycle_03;
+        -- m21_a <= max0_cmp;
+        -- max0_a <= re;
+        -- max0_b <= rh;
 
-        m21_a <= max0_cmp;
+        if rc > rf then
+          r0 <= rc;
+          m21_a <= '1';
+        else 
+          r0 <= rf;
+          m21_a <= '0';
+        end if;
 
-        max0_a <= re;
-        max0_b <= rh;
-
+        r3 <= r2;
+        
         r1 <= "0"&re + rd;
-
-        max1_val <= std_logic_vector(r2);
         r4 <= "000"&r2;
 
         o_dir(2) <= (m01_b and not m32_b and not m42_b and not m52_b) or 
@@ -339,17 +333,32 @@ wait until rising_edge(clk);
                     (m21_b and m42_b and not m52_b) or
                     (m31_b and m52_b);
 
-        r_out <= signed(unsigned(max1_val) - shift_left(r4, 1) - r4);
+        r_out <= signed(shift_left(r3, 3) - shift_left(r4, 1) - r4);
 
       when cycle_03 => 
         if (i_valid) then
           cycle <= cycle_04;
-          max0_a <= rb;
-          max0_b <= rg;
         end if;
 
-        m31_a <= max0_cmp;
-        m32_a <= max1_cmp;
+        -- max0_a <= rb;
+        -- max0_b <= rg;
+        -- m31_a <= max0_cmp;
+        -- m32_a <= max1_cmp;
+
+        if re > rh then 
+          r0 <= re;
+          m31_a <= '1';
+        else 
+          r0 <= rh;
+          m31_a <= '0';
+        end if;
+
+        if r3 > r2 then 
+          r3 <= r2;
+          m32_a <= '0';
+        else 
+          m32_a <= '1';
+        end if;
 
         r1 <= "0"&rf + rg;
 
@@ -376,13 +385,28 @@ wait until rising_edge(clk);
       when cycle_04 => 
         cycle <= cycle_05;
 
-        m42_a <= max1_cmp;
-        m01_b <= max0_cmp;
-        
-        max0_a <= ra;
-        max0_b <= rd;
+        if rb > rg then 
+          r0 <= rb;
+          m01_b <= '1';
+        else 
+          r0 <= rg;
+          m01_b <= '0';
+        end if;
+
+        if r3 > r2 then 
+          r3 <= r2;
+          m42_a <= '0';
+        else 
+          m42_a <= '1';
+        end if;
 
         r1 <= "0"&ra + rh;
+
+        -- m42_a <= max1_cmp;
+        -- m01_b <= max0_cmp;
+        
+        -- max0_a <= ra;
+        -- max0_b <= rd;
 
       when cycle_05 =>
         cycle <= cycle_06;
@@ -390,25 +414,44 @@ wait until rising_edge(clk);
         ri_col_b <= ri_col_a;
         ri_row_b <= ri_row_a;
 
-        m52_a <= max1_cmp;
-        m11_b <= max0_cmp;
+        -- m52_a <= max1_cmp;
+        -- m11_b <= max0_cmp;
+        -- max0_a <= rc;
+        -- max0_b <= rf;
 
-        max0_a <= rc;
-        max0_b <= rf;
+        if ra > rd then 
+          r0 <= ra;
+          m11_b <= '1';
+        else 
+          r0 <= rd;
+          m11_b <= '0';
+        end if;
+
+        if r3 > r2 then 
+          r3 <= r2;
+          m52_a <= '0';
+        else 
+          m52_a <= '1';
+        end if;
 
         r1 <= "0"&rb + rc;
 
       when cycle_06 => 
         cycle <= cycle_07;
+        -- m21_b <= max0_cmp;
+        -- max0_a <= re;
+        -- max0_b <= rh;
 
-        m21_b <= max0_cmp;
-
-        max0_a <= re;
-        max0_b <= rh;
+        if rc > rf then 
+          r0 <= rc;
+          m21_b <= '1';
+        else 
+          r0 <= rf;
+          m21_b <= '0';
+        end if;
+        r3 <= r2;
 
         r1 <= "0"&re + rd;
-
-        max1_val <= std_logic_vector(r2);
         r4 <= "000"&r2;
 
         o_dir(2) <= (m01_a and not m32_a and not m42_a and not m52_a) or 
@@ -416,17 +459,32 @@ wait until rising_edge(clk);
                     (m21_a and m42_a and not m52_a) or
                     (m31_a and m52_a);
 
-        r_out <= signed(unsigned(max1_val) - shift_left(r4, 1) - r4);
+        r_out <= signed(shift_left(r3, 3) - shift_left(r4, 1) - r4);
 
       when cycle_07 => 
-        if (i_valid = '1') then
+        if (i_valid) then
           cycle <= cycle_00;
-          max0_a <= rg;
-          max0_b <= rb;
         end if;
 
-        m31_b <= max0_cmp;
-        m32_b <= max1_cmp;
+        -- max0_a <= rg;
+        -- max0_b <= rb;
+        -- m31_b <= max0_cmp;
+        -- m32_b <= max1_cmp;
+
+        if re > rh then 
+          r0 <= re;
+          m31_b <= '1';
+        else 
+          r0 <= rh;
+          m31_b <= '0';
+        end if;
+
+        if r3 > r2 then 
+          r3 <= r2;
+          m32_b <= '0';
+        else 
+          m32_b <= '1';
+        end if;
 
         r1 <= "0"&rf + rg;
 
@@ -434,7 +492,7 @@ wait until rising_edge(clk);
         o_dir(0) <= (not m01_a and not m32_a and not m42_a and not m52_a) or
                     (m21_a and m42_a and not m52_a) or m52_a;
 
-        o_valid <= '1';
+        o_valid <= not first_process;
         if (r_out > to_signed(383, 13)) then
           o_edge <= '1';
         else 

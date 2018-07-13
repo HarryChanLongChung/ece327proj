@@ -56,13 +56,8 @@ if { $gui_mode } {
   add wave -radix unsigned sim:/kirsch_tb/uut/rh
   add wave -radix unsigned sim:/kirsch_tb/uut/ri
 
-  add wave -radix unsigned sim:/kirsch_tb/uut/max0_a
-  add wave -radix unsigned sim:/kirsch_tb/uut/max0_b
-  add wave -radix unsigned sim:/kirsch_tb/uut/max0_val
-
-  add wave -radix unsigned sim:/kirsch_tb/uut/max1_a
-  add wave -radix unsigned sim:/kirsch_tb/uut/max1_b
-  add wave -radix unsigned sim:/kirsch_tb/uut/max1_val
+  add wave                 sim:/kirsch_tb/uut/r0
+  add wave                 sim:/kirsch_tb/uut/r3
 
   add wave                 sim:/kirsch_tb/uut/r1
   add wave                 sim:/kirsch_tb/uut/r2
@@ -75,7 +70,8 @@ if { $gui_mode } {
 # code to run in both command line and gui mode
 
 # run $run_time ns
-run 1 ms
+# run 1 ms
+run 100000 ns
 
 #----------------------------------------------------------------------
 # if in gui mode, then zoom to see the complete simulation trace
