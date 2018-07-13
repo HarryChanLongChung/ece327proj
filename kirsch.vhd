@@ -85,14 +85,21 @@ architecture main of kirsch is
   signal rh : unsigned(7 downto 0) := "00000000";
   signal ri : unsigned(7 downto 0) := "00000000";
 
-  signal m0 : std_logic;
-  signal m1 : std_logic;
-  signal m2 : std_logic;
-  signal m3 : std_logic;
-  signal m4 : std_logic;
-  signal m5 : std_logic;
-  signal m6 : std_logic;
-  signal m7 : std_logic;
+  signal m01_a : std_logic;
+  signal m32_a : std_logic;
+  signal m42_a : std_logic;
+  signal m52_a : std_logic;
+  signal m11_a : std_logic;
+  signal m21_a : std_logic;
+  signal m31_a : std_logic;
+
+  signal m01_b : std_logic;
+  signal m32_b : std_logic;
+  signal m42_b : std_logic;
+  signal m52_b : std_logic;
+  signal m11_b : std_logic;
+  signal m21_b : std_logic;
+  signal m31_b : std_logic;
 
   signal r0 : unsigned(9 downto 0) := "0000000000";
   signal r1 : unsigned(9 downto 0) := "0000000000";
@@ -165,7 +172,6 @@ wait until rising_edge(clk);
   if (reset = '1') then
     -- this is in reset for both the mode and our internal statemachine
     state   <= resetState;
-    o_valid <= '0';
     o_mode  <= o_reset;
 
     col_index <= to_unsigned(0, 8);
@@ -279,8 +285,8 @@ process
 begin
 wait until rising_edge(clk);
   if (reset = '1') then 
-    max0_a <= "00"&rb;
-    max0_b <= "00"&rg;
+    max0_a <= "00"&rg;
+    max0_b <= "00"&rb;
 
     max1_a <=  r3;
     max1_b <=  r2;
@@ -302,15 +308,19 @@ wait until rising_edge(clk);
         ri_row_b <= ri_row_a;
         
         cycle <= cycle_01;
+        m01_a <= max0_cmp;
+        m42_b <= max1_cmp;
 
         max0_a <= "00"&ra;
-        max0_b<= "00"&rd;
+        max0_b <= "00"&rd;
 
         r1(7 downto 0) <= ra + rh;
         r4 <= r2 + r4;
         
       when cycle_01 => 
         cycle <= cycle_02;
+        m11_a <= max0_cmp;
+        m52_b <= max1_cmp;
 
         max0_a <= "00"&rc;
         max0_b <= "00"&rf;
@@ -320,6 +330,7 @@ wait until rising_edge(clk);
 
       when cycle_02 => 
         cycle <= cycle_03;
+        m21_a <= max0_cmp;
 
         max0_a <= "00"&re;
         max0_b <= "00"&rh;
@@ -327,7 +338,10 @@ wait until rising_edge(clk);
         r3 <= r2;
         r4 <= "00"&r2;
 
-        o_valid <= '1';
+        o_dir(2) <= (m01_b and not m32_b and not m42_b and not m52_b) or 
+                    (m11_b and m32_b and not m42_b and not m52_b) or
+                    (m21_b and m42_b and not m52_b) or
+                    (m31_b and m52_b);
 
         r_out <= (signed(r3&"000") - signed(r4&'0') - signed(r4));
 
@@ -338,19 +352,27 @@ wait until rising_edge(clk);
           max0_b <= "00"&rg;
         end if;
 
+        o_dir(1) <= (m32_b and not m42_b and not m52_b) or m52_b;
+        o_dir(0) <= (not m01_b and not m32_b and not m42_b and not m52_b) or
+                    (m21_b and m42_b and not m52_b) or m52_b;
+
         r1(7 downto 0) <= rf + rg;
-        -- check dependency on first process
-        o_row <= ri_row;
-        o_col <= ri_col;
+        m31_a <= max0_cmp;
+        m32_a <= max1_cmp;
 
         if (first_process = '1')  then
           first_process <= '0';
         else 
           o_valid <= '1';
-          o_edge <= '1' when (r_out > to_signed(383, 12)) else '0';
+          if (r_out > to_signed(383, 13)) then
+            o_edge <= '1';
+          else 
+            o_edge <= '0';
+            o_dir <= "000";
+          end if;
 
-          o_row  <= ri_row_b
-          o_col  <= ri_col_b          
+          o_row  <= ri_row_b;
+          o_col  <= ri_col_b;        
 
           -- o_dir  <= 
         end if;
@@ -361,6 +383,9 @@ wait until rising_edge(clk);
 
         cycle <= cycle_05;
 
+        m42_a <= max1_cmp;
+        m01_b <= max0_cmp;
+        
         max0_a <= "00"&ra;
         max0_b <= "00"&rd;
 
@@ -369,6 +394,8 @@ wait until rising_edge(clk);
 
       when cycle_05 =>
         cycle <= cycle_06;
+        m52_a <= max1_cmp;
+        m11_b <= max0_cmp;
 
         max0_a <= "00"&rc;
         max0_b <= "00"&rf;
@@ -379,29 +406,46 @@ wait until rising_edge(clk);
       when cycle_06 => 
         cycle <= cycle_07;
 
+        m21_b <= max0_cmp;
+
         max0_a <= "00"&re;
         max0_b <= "00"&rh;
         r1(7 downto 0) <= re + rd;
         r3 <= r2;
         r4 <= "00"&r2;
 
+        o_dir(2) <= (m01_a and not m32_a and not m42_a and not m52_a) or 
+                    (m11_a and m32_a and not m42_a and not m52_a) or
+                    (m21_a and m42_a and not m52_a) or
+                    (m31_a and m52_a);
         r_out <= (signed(r3&"000") - signed(r4&'0') - signed(r4));
 
       when cycle_07 => 
         cycle <= cycle_00;
         if (i_valid = '1') then
           cycle <= cycle_07;
-          max0_a <= "00"&rb;
-          max0_b <= "00"&rg;
+          max0_a <= "00"&rg;
+          max0_b <= "00"&rb;
         end if;
 
         r1(7 downto 0) <= rf + rg;
 
-        o_valid <= '1';
-        o_edge <= '1' when (r_out > 383) else '0';
+        m31_b <= max0_cmp;
+        m32_b <= max1_cmp;
+        o_dir(1) <= (m32_a and not m42_a and not m52_a) or m52_a;
+        o_dir(0) <= (not m01_a and not m32_a and not m42_a and not m52_a) or
+                    (m21_a and m42_a and not m52_a) or m52_a;
 
-        o_row  <= ri_row_b
-        o_col  <= ri_col_b
+        o_valid <= '1';
+        if (r_out > to_signed(383, 13)) then
+          o_edge <= '1';
+        else 
+          o_edge <= '0';
+          o_dir <= "000";
+        end if;
+
+        o_row  <= ri_row_b;
+        o_col  <= ri_col_b;
         -- o_dir  <= 
 
       when others =>
