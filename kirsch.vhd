@@ -85,6 +85,15 @@ architecture main of kirsch is
   signal rh : unsigned(7 downto 0) := "00000000";
   signal ri : unsigned(7 downto 0) := "00000000";
 
+  signal m0 : std_logic;
+  signal m1 : std_logic;
+  signal m2 : std_logic;
+  signal m3 : std_logic;
+  signal m4 : std_logic;
+  signal m5 : std_logic;
+  signal m6 : std_logic;
+  signal m7 : std_logic;
+
   signal r0 : unsigned(9 downto 0) := "0000000000";
   signal r1 : unsigned(9 downto 0) := "0000000000";
   signal r2 : unsigned(9 downto 0) := "0000000000";
