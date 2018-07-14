@@ -72,8 +72,8 @@ if { $gui_mode } {
 
 # run $run_time ns
 # run 1 ms
-# run 5500000 ns
- run 100000 ns
+ run 5500000 ns
+# run 100000 ns
 
 #----------------------------------------------------------------------
 # if in gui mode, then zoom to see the complete simulation trace

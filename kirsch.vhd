@@ -175,7 +175,6 @@ wait until rising_edge(clk);
           -- if we are filling column 0/1, do not start calculation
           if (col_index = to_unsigned(0, 8)) then
             rg <= unsigned(i_pixel);
-
             rdy_calc <= '0';
           elsif (col_index = to_unsigned(1, 8)) then
             rf <= unsigned(i_pixel);
@@ -191,6 +190,7 @@ wait until rising_edge(clk);
             rf <= re;
             ri_col_a <= col_index-2;
             ri_row_a <= row_index-1;
+            re <= unsigned(i_pixel);
           end if;
 
           case row_wr_en is
@@ -393,10 +393,10 @@ wait until rising_edge(clk);
         cycle <= cycle_05;
 
         if rg >= rb then 
-          r0 <= rb;
+          r0 <= rg;
           m01_b <= '0';
         else 
-          r0 <= rg;
+          r0 <= rb;
           m01_b <= '1';
         end if;
 
