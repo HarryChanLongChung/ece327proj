@@ -83,11 +83,6 @@ architecture main of kirsch is
   signal r4_a : unsigned(12 downto 0):= "0000000000000";
   signal r4_b : unsigned(12 downto 0):= "0000000000000";
 
-  signal r_out_a : unsigned(13 downto 0):= "00000000000000";
-  signal r_out_b : unsigned(13 downto 0):= "00000000000000";
-
-  signal r_out : signed(13 downto 0):= "00000000000000";
-
   signal ri_row_a, ri_row_b : unsigned(7 downto 0) := "00000000";
   signal ri_col_a, ri_col_b : unsigned(7 downto 0) := "00000000";
 begin
@@ -317,15 +312,9 @@ wait until rising_edge(clk);
 
         r1 <= "0"&rb + rc;
         r4_b <= r4_b;
-        r_out_a <= "0"&r3&"000";
-        r_out_b <= r4_b&"0" + r4_b;
-        
 
       when cycle_02 => 
         cycle <= cycle_03;
-        -- m21_a <= max0_cmp;
-        -- max0_a <= re;
-        -- max0_b <= rh;
 
         if rc >= rf then
           r0 <= rc;
@@ -338,8 +327,6 @@ wait until rising_edge(clk);
         r3 <= r2;
         
         r1 <= "0"&re + rd;
-        r_out <= signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_b&"0")) - signed(unsigned(r4_b));
-        -- output signal for "red" set
         if (first_process = '1')  then
           first_process <= '0';
         else 
@@ -448,8 +435,6 @@ wait until rising_edge(clk);
 
         r1 <= "0"&rb + rc;
         r4_a <= r4_a;
-        r_out_a <= "0"&r3&"000";
-        r_out_b <= r4_a&"0" + r4_a;
         
 
       when cycle_06 => 
@@ -468,7 +453,6 @@ wait until rising_edge(clk);
         r3 <= r2;
 
         r1 <= "0"&re + rd;
-        r_out <= signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_a&"0")) - signed(unsigned(r4_a));
         -- output signal for "black" set
         o_valid <= '1';
         if (signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_a&"0")) - signed(unsigned(r4_a)) > to_signed(383, 13)) then
@@ -488,7 +472,7 @@ wait until rising_edge(clk);
         o_row  <= ri_row_b;
         o_col  <= ri_col_b;
 
-      when cycle_07 => 
+      when others => 
         if (i_valid) then
           cycle <= cycle_00;
         end if;
@@ -516,8 +500,6 @@ wait until rising_edge(clk);
         
         r1 <= "0"&rf + rg;
         r4_a <= (others => '0');
-      when others =>
-        null;
     end case;
   end if;
 end process;
