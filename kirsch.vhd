@@ -287,6 +287,7 @@ wait until rising_edge(clk);
 
         r1 <= "0"&ra + rh;
         r4_a <= (others => '0');
+        
       when cycle_01 => 
         cycle <= cycle_02;
 
@@ -315,9 +316,10 @@ wait until rising_edge(clk);
         end if;
 
         r1 <= "0"&rb + rc;
+        r4_b <= r4_b;
         r_out_a <= "0"&r3&"000";
         r_out_b <= r4_b&"0" + r4_b;
-        r_out <= signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_b&"0")) - signed(unsigned(r4_b));
+        
 
       when cycle_02 => 
         cycle <= cycle_03;
@@ -336,13 +338,13 @@ wait until rising_edge(clk);
         r3 <= r2;
         
         r1 <= "0"&re + rd;
-
+        r_out <= signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_b&"0")) - signed(unsigned(r4_b));
         -- output signal for "red" set
         if (first_process = '1')  then
           first_process <= '0';
         else 
           o_valid <= '1';
-          if (r_out > to_signed(383, 13)) then
+          if (signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_b&"0")) - signed(unsigned(r4_b)) > to_signed(383, 13)) then
             o_edge <= '1';
             o_dir(2) <= (m01_b and not m32_b and not m42_b and not m52_b) or 
                         (m11_b and m32_b and not m42_b and not m52_b) or
@@ -388,6 +390,7 @@ wait until rising_edge(clk);
         end if;
 
         r1 <= "0"&rf + rg;
+        r4_b <= (others => '0');
 
       when cycle_04 => 
         cycle <= cycle_05;
@@ -444,10 +447,10 @@ wait until rising_edge(clk);
         end if;
 
         r1 <= "0"&rb + rc;
-
+        r4_a <= r4_a;
         r_out_a <= "0"&r3&"000";
         r_out_b <= r4_a&"0" + r4_a;
-        r_out <= signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_a&"0")) - signed(unsigned(r4_a));
+        
 
       when cycle_06 => 
         cycle <= cycle_07;
@@ -465,10 +468,10 @@ wait until rising_edge(clk);
         r3 <= r2;
 
         r1 <= "0"&re + rd;
-
+        r_out <= signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_a&"0")) - signed(unsigned(r4_a));
         -- output signal for "black" set
         o_valid <= '1';
-        if (r_out > to_signed(383, 13)) then
+        if (signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_a&"0")) - signed(unsigned(r4_a)) > to_signed(383, 13)) then
           o_edge <= '1';
           o_dir(2) <= (m01_a and not m32_a and not m42_a and not m52_a) or 
                       (m11_a and m32_a and not m42_a and not m52_a) or
@@ -510,9 +513,9 @@ wait until rising_edge(clk);
           r3 <= r2;
           m32_b <= '1';
         end if;
-
+        
         r1 <= "0"&rf + rg;
-
+        r4_a <= (others => '0');
       when others =>
         null;
     end case;
