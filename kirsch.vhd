@@ -15,15 +15,11 @@ package ostate_pkg is
   constant fetchPixel : state_ty := "10";
   constant result     : state_ty := "11";
 
-  subtype cal_state_ty is std_logic_vector(2 downto 0);
-  constant cycle_00 : cal_state_ty := "000";
-  constant cycle_01 : cal_state_ty := "001";
-  constant cycle_02 : cal_state_ty := "010";
-  constant cycle_03 : cal_state_ty := "011";
-  constant cycle_04 : cal_state_ty := "100";
-  constant cycle_05 : cal_state_ty := "101";
-  constant cycle_06 : cal_state_ty := "110";
-  constant cycle_07 : cal_state_ty := "111";
+  subtype cal_state_ty is std_logic_vector(1 downto 0);
+  constant cycle_00 : cal_state_ty := "00";
+  constant cycle_01 : cal_state_ty := "01";
+  constant cycle_02 : cal_state_ty := "10";
+  constant cycle_03 : cal_state_ty := "11";
 end ostate_pkg;
 
 library ieee;
@@ -75,6 +71,8 @@ architecture main of kirsch is
   signal m11_a, m11_b : std_logic;
   signal m21_a, m21_b : std_logic;
   signal m31_a, m31_b : std_logic;
+
+  signal is_a : std_logic := '1';
 
   signal r0 : unsigned(7 downto 0) := "00000000";
   signal r1 : unsigned(8 downto 0) := "000000000";
@@ -254,23 +252,46 @@ process
       case cycle is 
         when cycle_00 => 
           cycle <= cycle_01;
+
           if rg >= rb then 
             r0 <= rg;
-            m01_a <= '0';
+
+            if (is_a) then 
+              m01_a <= '0';
+            else 
+              m01_b <= '0';
+            end if;
           else 
             r0 <= rb;
-            m01_a <= '1';
+            
+            if (is_a) then 
+              m01_a <= '1';
+            else 
+              m01_b <= '1';
+            end if;
           end if;
 
           if r3 >= r2 then 
-            m42_b <= '0';
+            if (is_a) then 
+              m42_b <= '0';
+            else 
+              m42_a <= '0';
+            end if;
           else
             r3 <= r2;
-            m42_b <= '1';
+            if (is_a) then 
+              m42_b <= '1';
+            else 
+              m42_a <= '1';
+            end if;
           end if;
 
           r1 <= "0"&ra + rh;
-          r4_a <= (others => '0');
+          if (is_a) then 
+            r4_a <= (others => '0');
+          else 
+            r4_b <= (others => '0');
+          end if;
           
         when cycle_01 => 
           cycle <= cycle_02;
@@ -280,195 +301,146 @@ process
 
           if ra >= rd then 
             r0 <= ra;
-            m11_a <= '0';
+
+            if (is_a) then 
+              m11_a <= '0';
+            else 
+              m11_b <= '0';
+            end if;
           else 
             r0 <= rd;
-            m11_a <= '1';
+
+            if (is_a) then 
+              m11_a <= '1';
+            else 
+              m11_b <= '1';
+            end if;
           end if;
 
           if r3 >= r2 then 
-            
-            m52_b <= '0';
+            if (is_a) then 
+              m52_b <= '0';
+            else 
+              m52_a <= '0';
+            end if;
           else 
             r3 <= r2;
-            m52_b <= '1';
+            if (is_a) then 
+              m52_b <= '1';
+            else 
+              m52_a <= '1';
+            end if;
           end if;
 
           r1 <= "0"&rb + rc;
-          r_out <= signed(unsigned(r4_b&"00")) - signed(unsigned(r4_b));
+          if (is_a) then 
+            r_out <= signed(unsigned(r4_b&"00")) - signed(unsigned(r4_b));
+          else 
+            r_out <= signed(unsigned(r4_a&"00")) - signed(unsigned(r4_a));
+          end if;
 
         when cycle_02 => 
           cycle <= cycle_03;
 
           if rc >= rf then
             r0 <= rc;
-            m21_a <= '0';
+            if (is_a) then 
+              m21_a <= '0';
+            else
+              m21_b <= '0';
+            end if;
           else 
             r0 <= rf;
-            m21_a <= '1';
+            if (is_a) then 
+              m21_a <= '1';
+            else
+              m21_b <= '1';
+            end if;
           end if;
-
           r3 <= r2;
           
           r1 <= "0"&re + rd;
-          if (first_process = '1')  then
+          if (first_process)  then
             first_process <= '0';
           else 
             o_valid <= '1';
             if ((signed(unsigned("0"&r3&"000")) - r_out) > to_signed(383, 13)) then
               o_edge <= '1';
-              o_dir(2) <= (m01_b and not m32_b and not m42_b and not m52_b) or 
-                          (m11_b and m32_b and not m42_b and not m52_b) or
-                          (m21_b and m42_b and not m52_b) or
-                          (m31_b and m52_b);
-              o_dir(1) <= (m32_b and not m42_b and not m52_b) or m52_b;
-              o_dir(0) <= (not m01_b and not m32_b and not m42_b and not m52_b) or
-                          (m21_b and m42_b and not m52_b) or m52_b;
-                          
+              if (is_a) then
+                o_dir(2) <= (m01_b and not m32_b and not m42_b and not m52_b) or 
+                            (m11_b and m32_b and not m42_b and not m52_b) or
+                            (m21_b and m42_b and not m52_b) or
+                            (m31_b and m52_b);
+                o_dir(1) <= (m32_b and not m42_b and not m52_b) or m52_b;
+                o_dir(0) <= (not m01_b and not m32_b and not m42_b and not m52_b) or
+                            (m21_b and m42_b and not m52_b) or m52_b;
+              else 
+                o_dir(2) <= (m01_a and not m32_a and not m42_a and not m52_a) or 
+                        (m11_a and m32_a and not m42_a and not m52_a) or
+                        (m21_a and m42_a and not m52_a) or
+                        (m31_a and m52_a);
+                o_dir(1) <= (m32_a and not m42_a and not m52_a) or m52_a;
+                o_dir(0) <= (not m01_a and not m32_a and not m42_a and not m52_a) or
+                            (m21_a and m42_a and not m52_a) or m52_a;
+              end if;
             else 
               o_edge <= '0';
               o_dir <= "000";
             end if;
 
             o_row  <= ri_row_b;
-            o_col  <= ri_col_b;        
+            o_col  <= ri_col_b;      
           end if;
-
-        when cycle_03 => 
-          if (i_valid) then
-            cycle <= cycle_04;
-          end if;
-            
-          if re >= rh then 
-            r0 <= re;
-            m31_a <= '0';
-          else 
-            r0 <= rh;
-            m31_a <= '1';
-          end if;
-
-          if r3 >= r2 then 
-            
-            m32_a <= '0';
-          else 
-            r3 <= r2;
-            m32_a <= '1';
-          end if;
-
-          r1 <= "0"&rf + rg;
-          r4_b <= (others => '0');
-
-          o_edge <= '0';
-          o_dir <= "000";
-          o_valid <= '0';
-
-        when cycle_04 => 
-          cycle <= cycle_05;
-
-          if rg >= rb then 
-            r0 <= rg;
-            m01_b <= '0';
-          else 
-            r0 <= rb;
-            m01_b <= '1';
-          end if;
-
-          if r3 >= r2 then 
-            
-            m42_a <= '0';
-          else 
-            r3 <= r2;
-            m42_a <= '1';
-          end if;
-
-          r1 <= "0"&ra + rh;
-          r4_b <= (others => '0');
-
-        when cycle_05 =>
-          cycle <= cycle_06;
-
-          ri_col_b <= ri_col_a;
-          ri_row_b <= ri_row_a;
-
-          if ra >= rd then 
-            r0 <= ra;
-            m11_b <= '0';
-          else 
-            r0 <= rd;
-            m11_b <= '1';
-          end if;
-
-          if r3 >= r2 then 
-            
-            m52_a <= '0';
-          else 
-            r3 <= r2;
-            m52_a <= '1';
-          end if;
-
-          r1 <= "0"&rb + rc;
-          r_out <= signed(unsigned(r4_a&"00")) - signed(unsigned(r4_a));
-          
-
-        when cycle_06 => 
-          cycle <= cycle_07;
-
-          if rc >= rf then 
-            r0 <= rc;
-            m21_b <= '0';
-          else 
-            r0 <= rf;
-            m21_b <= '1';
-          end if;
-          r3 <= r2;
-
-          r1 <= "0"&re + rd;
-          -- output signal for "black" set
-          o_valid <= '1';
-          if ((signed(unsigned("0"&r3&"000")) - r_out) > to_signed(383, 13)) then
-            o_edge <= '1';
-            o_dir(2) <= (m01_a and not m32_a and not m42_a and not m52_a) or 
-                        (m11_a and m32_a and not m42_a and not m52_a) or
-                        (m21_a and m42_a and not m52_a) or
-                        (m31_a and m52_a);
-            o_dir(1) <= (m32_a and not m42_a and not m52_a) or m52_a;
-            o_dir(0) <= (not m01_a and not m32_a and not m42_a and not m52_a) or
-                        (m21_a and m42_a and not m52_a) or m52_a;
-          else 
-            o_edge <= '0';
-            o_dir <= "000";
-          end if;
-
-          o_row  <= ri_row_b;
-          o_col  <= ri_col_b;
 
         when others => 
           if (i_valid) then
             cycle <= cycle_00;
           end if;
-
+            
           if re >= rh then 
             r0 <= re;
-            m31_b <= '0';
+
+            if (is_a) then
+              m31_a <= '0';
+            else 
+              m31_b <= '0';
+            end if;
           else 
             r0 <= rh;
-            m31_b <= '1';
+
+            if (is_a) then
+              m31_a <= '1';
+            else 
+              m31_b <= '1';
+            end if;
           end if;
 
           if r3 >= r2 then 
-            
-            m32_b <= '0';
+            if (is_a) then
+              m32_a <= '0';
+            else 
+              m31_b <= '0';
+            end if;
           else 
             r3 <= r2;
-            m32_b <= '1';
+            if (is_a) then
+              m32_a <= '1';
+            else 
+              m31_b <= '1';
+            end if;
           end if;
-          
+
           r1 <= "0"&rf + rg;
-          r4_a <= (others => '0');
+          if (is_a) then 
+            r4_b <= (others => '0');
+          else 
+            r4_a <= (others => '0');
+          end if;
 
           o_edge <= '0';
           o_dir <= "000";
           o_valid <= '0';
+          is_a <= not is_a;
       end case;
     end if;
   end process;
