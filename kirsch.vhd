@@ -10,16 +10,10 @@ package ostate_pkg is
   constant o_reset: mode_ty := "01";
 
   subtype state_ty is std_logic_vector(1 downto 0);
-  constant resetState : state_ty := "00";
-  constant firstFill  : state_ty := "01";
-  constant fetchPixel : state_ty := "10";
-  constant result     : state_ty := "11";
-
-  subtype cal_state_ty is std_logic_vector(1 downto 0);
-  constant cycle_00 : cal_state_ty := "00";
-  constant cycle_01 : cal_state_ty := "01";
-  constant cycle_02 : cal_state_ty := "10";
-  constant cycle_03 : cal_state_ty := "11";
+  constant state_00 : state_ty := "00"; -- cycle_00 and resetState
+  constant state_01 : state_ty := "01"; -- cycle_01 and firstFill
+  constant state_02 : state_ty := "10"; -- cycle_02 and fetchPixel
+  constant state_03 : state_ty := "11"; -- cycle_03 and result
 end ostate_pkg;
 
 library ieee;
@@ -53,8 +47,7 @@ architecture main of kirsch is
   signal row_wr_en : unsigned(2 downto 0) := "100";
 
   -- intermediate signal
-  signal state : state_ty := resetState;
-  signal cycle : cal_state_ty := cycle_00;
+  signal state, cycle : state_ty := state_00;
 
   signal col_index, row_index  : unsigned(7 downto 0) := "00000000";
 
@@ -117,7 +110,7 @@ begin
 wait until rising_edge(clk);
   if (reset = '1') then
     -- this is in reset for both the mode and our internal statemachine
-    state   <= resetState;
+    state   <= state_00;
     o_mode  <= o_reset;
 
     col_index <= to_unsigned(0, 8);
@@ -126,15 +119,15 @@ wait until rising_edge(clk);
     row_wr_en <= to_unsigned(1, 3);
   else
     case state is
-      when resetState =>
+      when state_00 =>
         o_mode <= o_idle;
         if (i_valid = '1') then 
-          state <= firstFill;
+          state <= state_01;
           col_index <= col_index + 1;
         end if;
 
       -- need to fill up to at least the first 2 row
-      when firstFill =>
+      when state_01 =>
         o_mode <= o_busy;
         rdy_calc <= '0';
 
@@ -147,7 +140,7 @@ wait until rising_edge(clk);
             row_index <= row_index + 1;
 
             if (row_index = to_unsigned(1, 8)) then
-              state <= fetchPixel;
+              state <= state_02;
             end if;
           end if;
         end if;
@@ -249,8 +242,8 @@ process
       r4_b <= "0000"&r1 + r4_b;
 
       case cycle is 
-        when cycle_00 => 
-          cycle <= cycle_01;
+        when state_00 => 
+          cycle <= state_01;
 
           if rg >= rb then 
             r0 <= rg;
@@ -292,8 +285,8 @@ process
             r4_b <= (others => '0');
           end if;
           
-        when cycle_01 => 
-          cycle <= cycle_02;
+        when state_01 => 
+          cycle <= state_02;
 
           ri_col_b <= ri_col_a;
           ri_row_b <= ri_row_a;
@@ -338,8 +331,8 @@ process
             r_out <= signed(unsigned(r4_a&"00")) - signed(unsigned(r4_a));
           end if;
 
-        when cycle_02 => 
-          cycle <= cycle_03;
+        when state_02 => 
+          cycle <= state_03;
 
           if rc >= rf then
             r0 <= rc;
@@ -393,7 +386,7 @@ process
 
         when others => 
           if (i_valid) then
-            cycle <= cycle_00;
+            cycle <= state_00;
           end if;
             
           if re >= rh then 
