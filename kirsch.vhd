@@ -376,9 +376,9 @@ process
                             (m21_b and m42_b and not m52_b) or m52_b;
               else 
                 o_dir(2) <= (m01_a and not m32_a and not m42_a and not m52_a) or 
-                        (m11_a and m32_a and not m42_a and not m52_a) or
-                        (m21_a and m42_a and not m52_a) or
-                        (m31_a and m52_a);
+                            (m11_a and m32_a and not m42_a and not m52_a) or
+                            (m21_a and m42_a and not m52_a) or
+                            (m31_a and m52_a);
                 o_dir(1) <= (m32_a and not m42_a and not m52_a) or m52_a;
                 o_dir(0) <= (not m01_a and not m32_a and not m42_a and not m52_a) or
                             (m21_a and m42_a and not m52_a) or m52_a;
