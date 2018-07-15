@@ -63,10 +63,11 @@ architecture main of kirsch is
   signal col_index, row_index  : unsigned(7 downto 0) := "00000000";
 
   signal rdy_calc      : std_logic := '0';
-  signal rdy_assign    : std_logic := '0';
   signal first_process : std_logic := '1';
 
   signal ra, rb, rc, rd, re, rf, rg, rh, ri : unsigned(7 downto 0) := "00000000";
+
+  signal last_pixel : std_logic;
 
   signal m01_a, m01_b : std_logic;
   signal m32_a, m32_b : std_logic;
@@ -124,18 +125,36 @@ wait until rising_edge(clk);
     -- this is in reset for both the mode and our internal statemachine
     state   <= resetState;
     o_mode  <= o_reset;
+    last_pixel <= '0';
 
     col_index <= to_unsigned(0, 8);
     row_index <= to_unsigned(0, 8);
 
     row_wr_en <= to_unsigned(1, 3);
+
+    ri_row_a <= to_unsigned(0,8);
+    ri_col_a <= to_unsigned(0,8);
+
+    ra <= to_unsigned(0,8);
+    rb <= to_unsigned(0,8);
+    rc <= to_unsigned(0,8);
+    rd <= to_unsigned(0,8);
+    re <= to_unsigned(0,8);
+    rf <= to_unsigned(0,8);
+    rg <= to_unsigned(0,8);
+    rh <= to_unsigned(0,8);
+    ri <= to_unsigned(0,8);
+
+    rdy_calc <= '0';
+
   else
     case state is
       when resetState =>
         o_mode <= o_idle;
+        rdy_calc <= '0';
         if (i_valid = '1') then 
           state <= firstFill;
-          col_index <= col_index + 1;
+          col_index <= to_unsigned(1,8);
         end if;
 
       -- need to fill up to at least the first 2 row
@@ -149,7 +168,6 @@ wait until rising_edge(clk);
           -- at the end of row
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
-            col_index <= to_unsigned(0, 8);
             row_index <= row_index + to_unsigned(1, 8);
 
             if (row_index = to_unsigned(1, 8)) then
@@ -168,7 +186,6 @@ wait until rising_edge(clk);
           -- at the end of row
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
-            col_index <= to_unsigned(0, 8);
             row_index <= row_index + 1;
           end if;
 
@@ -181,6 +198,8 @@ wait until rising_edge(clk);
             rdy_calc <= '0';
           elsif (col_index = to_unsigned(2, 8)) then 
             re <= unsigned(i_pixel);
+            ri_col_a <= col_index-2;
+            ri_row_a <= row_index-1;
           else
             ra <= rb;
             rb <= rc;
@@ -191,6 +210,10 @@ wait until rising_edge(clk);
             ri_col_a <= col_index-2;
             ri_row_a <= row_index-1;
             re <= unsigned(i_pixel);
+            if (col_index = to_unsigned(255,8) and row_index = to_unsigned(255,8)) then
+              last_pixel <= '1';
+              state <= result;
+            end if;
           end if;
 
           case row_wr_en is
@@ -245,7 +268,12 @@ wait until rising_edge(clk);
         end if;
 
         when others => 
-          null;
+          if (cycle = cycle_03) then
+            last_pixel <= '0';
+            o_mode <= o_idle;
+            state <= resetState;
+            rdy_calc <= '0';
+          end if;
     end case;
   end if;
 end process;
@@ -253,13 +281,41 @@ end process;
 process
 begin
 wait until rising_edge(clk);
+  if (reset = '1') then 
+    m01_a <= '0'; 
+    m32_a <= '0';
+    m42_a <= '0';
+    m52_a <= '0';
+    m11_a <= '0';
+    m21_a <= '0';
+    m31_a <= '0';
+
+    m01_b <= '0'; 
+    m32_b <= '0';
+    m42_b <= '0';
+    m52_b <= '0';
+    m11_b <= '0';
+    m21_b <= '0';
+    m31_b <= '0';
+
+    r0 <= to_unsigned(0,8);
+    r1 <= to_unsigned(0,9);
+    r2 <= to_unsigned(0,10);
+    r3 <= to_unsigned(0,10);
+    r4_a <= to_unsigned(0,13);
+    r4_b <= to_unsigned(0,13);
+
+    ri_row_b <= to_unsigned(0,8);
+    ri_col_b <= to_unsigned(0,8);
+
+    o_row <= to_unsigned(0,8);
+    o_col <= to_unsigned(0,8);
+  else 
+
   if (rdy_calc) then
-    o_edge <= '0';
-    r2 <= "00"&r0 + r1;
-    r4_a <= "0000"&r1 + r4_a;
-    r4_b <= "0000"&r1 + r4_b;
-    o_dir <= "000";
     o_valid <= '0';
+    o_edge <= '0';
+    o_dir <= "000";
 
     case cycle is 
       when cycle_00 => 
@@ -284,9 +340,10 @@ wait until rising_edge(clk);
         -- m42_b <= max1_cmp;
         -- max0_a <= ra;
         -- max0_b <= rd;
-
         r1 <= "0"&ra + rh;
+        r2 <= "00"&r0 + r1;
         r4_a <= (others => '0');
+        r4_b <= "0000"&r1 + r4_b;
         
       when cycle_01 => 
         cycle <= cycle_02;
@@ -316,7 +373,9 @@ wait until rising_edge(clk);
         end if;
 
         r1 <= "0"&rb + rc;
+        r2 <= "00"&r0 + r1;
         r4_b <= r4_b;
+        r4_a <= "0000"&r1 + r4_a;
         r_out_a <= "0"&r3&"000";
         r_out_b <= r4_b&"0" + r4_b;
         
@@ -338,6 +397,8 @@ wait until rising_edge(clk);
         r3 <= r2;
         
         r1 <= "0"&re + rd;
+        r2 <= "00"&r0 + r1;
+        r4_a <= "0000"&r1 + r4_a;
         r_out <= signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_b&"0")) - signed(unsigned(r4_b));
         -- output signal for "red" set
         if (first_process = '1')  then
@@ -360,13 +421,15 @@ wait until rising_edge(clk);
           end if;
 
           o_row  <= ri_row_b;
-          o_col  <= ri_col_b;        
+          o_col  <= ri_col_b;
+          if (last_pixel) then
+            o_col <= to_unsigned(254,8);
+          end if;        
         end if;
 
       when cycle_03 => 
         if (i_valid) then
           cycle <= cycle_04;
-        end if;
 
         -- max0_a <= rb;
         -- max0_b <= rg;
@@ -390,7 +453,15 @@ wait until rising_edge(clk);
         end if;
 
         r1 <= "0"&rf + rg;
+        r2 <= "00"&r0 + r1;
         r4_b <= (others => '0');
+        r4_a <= "0000"&r1 + r4_a;
+        end if;
+        if (last_pixel) then
+          o_col <= to_unsigned(0,8);
+          o_row <= to_unsigned(0,8);
+          cycle <= cycle_00;
+        end if;
 
       when cycle_04 => 
         cycle <= cycle_05;
@@ -412,7 +483,9 @@ wait until rising_edge(clk);
         end if;
 
         r1 <= "0"&ra + rh;
+        r2 <= "00"&r0 + r1;
         r4_b <= (others => '0');
+        r4_a <= "0000"&r1 + r4_a;
         -- m42_a <= max1_cmp;
         -- m01_b <= max0_cmp;
         
@@ -447,7 +520,9 @@ wait until rising_edge(clk);
         end if;
 
         r1 <= "0"&rb + rc;
+        r2 <= "00"&r0 + r1;
         r4_a <= r4_a;
+        r4_b <= "0000"&r1 + r4_b;
         r_out_a <= "0"&r3&"000";
         r_out_b <= r4_a&"0" + r4_a;
         
@@ -468,6 +543,8 @@ wait until rising_edge(clk);
         r3 <= r2;
 
         r1 <= "0"&re + rd;
+        r2 <= "00"&r0 + r1;
+        r4_b <= "0000"&r1 + r4_b;
         r_out <= signed(unsigned("0"&r3&"000")) - signed(unsigned(r4_a&"0")) - signed(unsigned(r4_a));
         -- output signal for "black" set
         o_valid <= '1';
@@ -489,9 +566,8 @@ wait until rising_edge(clk);
         o_col  <= ri_col_b;
 
       when cycle_07 => 
-        if (i_valid) then
+        if (i_valid or last_pixel) then
           cycle <= cycle_00;
-        end if;
 
         -- max0_a <= rg;
         -- max0_b <= rb;
@@ -515,10 +591,14 @@ wait until rising_edge(clk);
         end if;
         
         r1 <= "0"&rf + rg;
+        r2 <= "00"&r0 + r1;
         r4_a <= (others => '0');
+        r4_b <= "0000"&r1 + r4_b;
+        end if;
       when others =>
         null;
     end case;
+  end if;
   end if;
 end process;
 

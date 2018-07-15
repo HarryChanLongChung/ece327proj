@@ -56,14 +56,14 @@ if { $gui_mode } {
   add wave -radix unsigned sim:/kirsch_tb/uut/rh
   add wave -radix unsigned sim:/kirsch_tb/uut/ri
 
-  add wave                 sim:/kirsch_tb/uut/r0
-  add wave                 sim:/kirsch_tb/uut/r3
+  add wave -radix unsigned sim:/kirsch_tb/uut/r0
+  add wave -radix unsigned sim:/kirsch_tb/uut/r3
 
-  add wave                 sim:/kirsch_tb/uut/r1
-  add wave                 sim:/kirsch_tb/uut/r2
-  add wave                 sim:/kirsch_tb/uut/r4_a
-  add wave                 sim:/kirsch_tb/uut/r4_b
-  add wave                 sim:/kirsch_tb/uut/r_out
+  add wave -radix unsigned sim:/kirsch_tb/uut/r1
+  add wave -radix unsigned sim:/kirsch_tb/uut/r2
+  add wave -radix unsigned sim:/kirsch_tb/uut/r4_a
+  add wave -radix unsigned sim:/kirsch_tb/uut/r4_b
+  add wave -radix decimal sim:/kirsch_tb/uut/r_out
   #------------------------------------------------------
 
 }
@@ -72,7 +72,7 @@ if { $gui_mode } {
 
 # run $run_time ns
 # run 1 ms
- run 5500000 ns
+ run 50 ms
 # run 100000 ns
 
 #----------------------------------------------------------------------
