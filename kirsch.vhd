@@ -44,19 +44,19 @@ end kirsch;
 architecture main of kirsch is
   -- mem enetity port signal
   signal row0_read, row1_read, row2_read : std_logic_vector(7 downto 0);
-  signal row_wr_en : unsigned(2 downto 0) := "100";
+  signal row_wr_en : unsigned(2 downto 0);
 
   -- intermediate signal
-  signal state, cycle : state_ty := state_00;
+  signal state, cycle : state_ty;
 
-  signal col_index, row_index  : unsigned(7 downto 0) := "00000000";
+  signal col_index, row_index  : unsigned(7 downto 0);
 
   signal rdy_calc      : std_logic := '0';
   signal first_process : std_logic := '1';
 
-  signal ra, rb, rc, rd, re, rf, rg, rh, ri : unsigned(7 downto 0) := "00000000";
+  signal ra, rb, rc, rd, re, rf, rg, rh, ri : unsigned(7 downto 0);
 
-  signal is_a : std_logic := '1';
+  signal is_a : std_logic;
 
   signal m01_a, m01_b : std_logic;
   signal m32_a, m32_b : std_logic;
@@ -108,15 +108,24 @@ begin
 process
 begin
 wait until rising_edge(clk);
-  if (reset = '1') then
+  if (reset) then 
     -- this is in reset for both the mode and our internal statemachine
     state   <= state_00;
     o_mode  <= o_reset;
 
     col_index <= to_unsigned(0, 8);
     row_index <= to_unsigned(0, 8);
-
     row_wr_en <= to_unsigned(1, 3);
+
+    ra <= to_unsigned(0, 8);
+    rb <= to_unsigned(0, 8);
+    rc <= to_unsigned(0, 8);
+    rd <= to_unsigned(0, 8);
+    re <= to_unsigned(0, 8);
+    rf <= to_unsigned(0, 8);
+    rg <= to_unsigned(0, 8);
+    rh <= to_unsigned(0, 8);
+    ri <= to_unsigned(0, 8);
   else
     case state is
       when state_00 =>
@@ -236,122 +245,118 @@ end process;
 process
   begin
   wait until rising_edge(clk);
+  if (reset) then
+    o_edge <= '0';
+    o_valid <= '0';
+    o_dir <= "000";
+
+    cycle <= state_00;
+    is_a <= '1';
+
+    r1 <= to_unsigned(0,9);
+    r2 <= to_unsigned(0,10);
+    r3 <= to_unsigned(0,10);
+    r4_a <= to_unsigned(0,13);
+    r4_b <= to_unsigned(0,13);
+
+    m01_a <= '0';
+    m01_b <= '0';
+    m32_a <= '0';
+    m32_b <= '0';
+    m42_a <= '0';
+    m42_b <= '0';
+    m52_a <= '0';
+    m52_b <= '0';
+    m11_a <= '0';
+    m11_b <= '0';
+    m21_a <= '0';
+    m21_b <= '0';
+    m31_a <= '0';
+    m31_b <= '0';
+
+  else 
     if (rdy_calc) then
-      r2 <= "00"&r0 + r1;
-      r4_a <= "0000"&r1 + r4_a;
-      r4_b <= "0000"&r1 + r4_b;
+      if (i_valid) then
+        r2 <= "00"&r0 + r1;
+        r4_a <= "0000"&r1 + r4_a;
+        r4_b <= "0000"&r1 + r4_b;
+      end if;
 
       case cycle is 
         when state_00 => 
           cycle <= state_01;
 
-          if rg >= rb then 
-            r0 <= rg;
-
-            if (is_a) then 
-              m01_a <= '0';
-            else 
-              m01_b <= '0';
-            end if;
-          else 
-            r0 <= rb;
-            
-            if (is_a) then 
-              m01_a <= '1';
-            else 
-              m01_b <= '1';
-            end if;
-          end if;
-
-          if r3 >= r2 then 
-            if (is_a) then 
-              m42_b <= '0';
-            else 
-              m42_a <= '0';
-            end if;
-          else
-            r3 <= r2;
-            if (is_a) then 
-              m42_b <= '1';
-            else 
-              m42_a <= '1';
-            end if;
-          end if;
-
           r1 <= "0"&ra + rh;
+
           if (is_a) then 
             r4_a <= (others => '0');
+            m01_a <= '1' when rg < rb else '0';
+            m42_b <= '1' when r3 < r2 else '0';
           else 
             r4_b <= (others => '0');
+            m01_b <= '1' when rg < rb else '0';
+            m42_a <= '1' when r3 < r2 else '0';
           end if;
-          
+
+          if rg >= rb then 
+            r0 <= rg;
+          else 
+            r0 <= rb;
+          end if;
+
+          if r3 < r2 then 
+            r3 <= r2;
+          end if;
+        
         when state_01 => 
           cycle <= state_02;
 
           ri_col_b <= ri_col_a;
           ri_row_b <= ri_row_a;
 
-          if ra >= rd then 
-            r0 <= ra;
-
-            if (is_a) then 
-              m11_a <= '0';
-            else 
-              m11_b <= '0';
-            end if;
-          else 
-            r0 <= rd;
-
-            if (is_a) then 
-              m11_a <= '1';
-            else 
-              m11_b <= '1';
-            end if;
-          end if;
-
-          if r3 >= r2 then 
-            if (is_a) then 
-              m52_b <= '0';
-            else 
-              m52_a <= '0';
-            end if;
-          else 
-            r3 <= r2;
-            if (is_a) then 
-              m52_b <= '1';
-            else 
-              m52_a <= '1';
-            end if;
-          end if;
-
           r1 <= "0"&rb + rc;
+
           if (is_a) then 
+            m11_a <= '1' when ra < rd else '0';
+            m52_b <= '1' when r3 < r2 else '0';
             r_out <= signed(unsigned(r4_b&"00")) - signed(unsigned(r4_b));
           else 
+            m11_b <= '1' when ra < rd else '0';
+            m52_a <= '1' when r3 < r2 else '0';
             r_out <= signed(unsigned(r4_a&"00")) - signed(unsigned(r4_a));
+          end if;
+
+          if ra >= rd then 
+            r0 <= ra;
+          else 
+            r0 <= rd;
+          end if;
+
+          if r3 < r2 then 
+            r3 <= r2;
           end if;
 
         when state_02 => 
           cycle <= state_03;
 
+          o_row  <= ri_row_b;
+          o_col  <= ri_col_b;
+
+          r3 <= r2;
+          r1 <= "0"&re + rd;
+
+          if (is_a) then 
+            m21_a <= '1' when rc < rf else '0';
+          else 
+            m21_b <= '1' when rc < rf else '0';
+          end if;
+
           if rc >= rf then
             r0 <= rc;
-            if (is_a) then 
-              m21_a <= '0';
-            else
-              m21_b <= '0';
-            end if;
           else 
             r0 <= rf;
-            if (is_a) then 
-              m21_a <= '1';
-            else
-              m21_b <= '1';
-            end if;
           end if;
-          r3 <= r2;
           
-          r1 <= "0"&re + rd;
           if (first_process)  then
             first_process <= '0';
           else 
@@ -378,62 +383,43 @@ process
             else 
               o_edge <= '0';
               o_dir <= "000";
-            end if;
-
-            o_row  <= ri_row_b;
-            o_col  <= ri_col_b;      
+            end if;    
           end if;
 
         when others => 
+          r1 <= "0"&rf + rg;
+          
+          o_edge <= '0';
+          o_dir <= "000";
+          o_valid <= '0';
+
           if (i_valid) then
             cycle <= state_00;
+          end if;
+
+          if (is_a) then 
+            m31_a <= '1' when re < rh else '0';
+            m32_a <= '1' when r3 < r2 else '0';
+            r4_b <= (others => '0');
+          else 
+            m31_b <= '1' when re < rh else '0';
+            m32_b <= '1' when r3 < r2 else '0';
+            r4_a <= (others => '0');
           end if;
             
           if re >= rh then 
             r0 <= re;
-
-            if (is_a) then
-              m31_a <= '0';
-            else 
-              m31_b <= '0';
-            end if;
           else 
             r0 <= rh;
-
-            if (is_a) then
-              m31_a <= '1';
-            else 
-              m31_b <= '1';
-            end if;
           end if;
 
-          if r3 >= r2 then 
-            if (is_a) then
-              m32_a <= '0';
-            else 
-              m32_b <= '0';
-            end if;
-          else 
+          if r3 < r2 then 
             r3 <= r2;
-            if (is_a) then
-              m32_a <= '1';
-            else 
-              m32_b <= '1';
-            end if;
           end if;
 
-          r1 <= "0"&rf + rg;
-          if (is_a) then 
-            r4_b <= (others => '0');
-          else 
-            r4_a <= (others => '0');
-          end if;
-
-          o_edge <= '0';
-          o_dir <= "000";
-          o_valid <= '0';
           is_a <= not is_a;
       end case;
     end if;
+  end if;
   end process;
 end architecture main;
