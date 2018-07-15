@@ -59,10 +59,11 @@ architecture main of kirsch is
   signal col_index, row_index  : unsigned(7 downto 0) := "00000000";
 
   signal rdy_calc      : std_logic := '0';
-  signal rdy_assign    : std_logic := '0';
   signal first_process : std_logic := '1';
 
   signal ra, rb, rc, rd, re, rf, rg, rh, ri : unsigned(7 downto 0) := "00000000";
+
+  signal is_a : std_logic := '1';
 
   signal m01_a, m01_b : std_logic;
   signal m32_a, m32_b : std_logic;
@@ -71,8 +72,6 @@ architecture main of kirsch is
   signal m11_a, m11_b : std_logic;
   signal m21_a, m21_b : std_logic;
   signal m31_a, m31_b : std_logic;
-
-  signal is_a : std_logic := '1';
 
   signal r0 : unsigned(7 downto 0) := "00000000";
   signal r1 : unsigned(8 downto 0) := "000000000";
@@ -419,14 +418,14 @@ process
             if (is_a) then
               m32_a <= '0';
             else 
-              m31_b <= '0';
+              m32_b <= '0';
             end if;
           else 
             r3 <= r2;
             if (is_a) then
               m32_a <= '1';
             else 
-              m31_b <= '1';
+              m32_b <= '1';
             end if;
           end if;
 

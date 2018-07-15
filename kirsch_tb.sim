@@ -42,6 +42,22 @@ if { $gui_mode } {
   add wave                 sim:/kirsch_tb/o_edge
   add wave                 sim:/kirsch_tb/o_dir
 
+  add wave                 sim:/kirsch_tb/uut/m01_a
+  add wave                 sim:/kirsch_tb/uut/m32_a
+  add wave                 sim:/kirsch_tb/uut/m42_a
+  add wave                 sim:/kirsch_tb/uut/m52_a
+  add wave                 sim:/kirsch_tb/uut/m11_a
+  add wave                 sim:/kirsch_tb/uut/m21_a
+  add wave                 sim:/kirsch_tb/uut/m31_a
+
+  add wave                 sim:/kirsch_tb/uut/m01_b
+  add wave                 sim:/kirsch_tb/uut/m32_b
+  add wave                 sim:/kirsch_tb/uut/m42_b
+  add wave                 sim:/kirsch_tb/uut/m52_b
+  add wave                 sim:/kirsch_tb/uut/m11_b
+  add wave                 sim:/kirsch_tb/uut/m21_b
+  add wave                 sim:/kirsch_tb/uut/m31_b
+
   #------------------------------------------------------
 
 }
