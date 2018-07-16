@@ -148,6 +148,7 @@ wait until rising_edge(clk);
         if (i_valid = '1') then 
           state <= firstFill;
           col_index <= to_unsigned(1,8);
+          o_col <= to_unsigned(1,8);
         end if;
 
       -- need to fill up to at least the first 2 row
@@ -157,36 +158,34 @@ wait until rising_edge(clk);
 
         if (i_valid = '1') then
           col_index <= col_index + 1;
-          
+          o_col <= col_index + 1;
 
           -- at the end of row
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
             row_index <= row_index + to_unsigned(1, 8);
+            o_row <= row_index + to_unsigned(1, 8);
 
             if (row_index = to_unsigned(1, 8)) then
               state <= fetchPixel;
             end if;
           end if;
         end if;
-
-        o_col <= col_index;
-        o_row <= row_index;
       
       -- wait for this to fill the column 0 and then start calculating
       when fetchPixel =>
         -- finished filling up column 0
         if (i_valid = '1') then 
           col_index <= col_index + 1;
+          o_col <= col_index + 1;
           rdy_calc <= '1';
 
           -- at the end of row
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
             row_index <= row_index + 1;
+            o_row <= row_index + 1;
           end if;
-          o_col <= col_index;
-          o_row <= row_index;
           -- if we are filling column 0/1, do not start calculation
           if (col_index = to_unsigned(0, 8)) then
             rg <= unsigned(i_pixel);

@@ -24,7 +24,7 @@ entity kirsch_tb is
   generic (
     test_num      : natural := 1;
     result_suffix : string  := "sim";
-    bubbles       : natural := 27;
+    bubbles       : natural := 3;
     period        : real    := 10.0
   );
 end kirsch_tb;
