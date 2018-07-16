@@ -63,18 +63,17 @@ architecture main of kirsch is
   signal col_index, row_index  : unsigned(7 downto 0) := "00000000";
 
   signal rdy_calc      : std_logic := '0';
-  signal rdy_assign    : std_logic := '0';
   signal first_process : std_logic := '1';
 
   signal ra, rb, rc, rd, re, rf, rg, rh, ri : unsigned(7 downto 0) := "00000000";
 
-  signal m01_a, m01_b : std_logic;
-  signal m32_a, m32_b : std_logic;
-  signal m42_a, m42_b : std_logic;
-  signal m52_a, m52_b : std_logic;
-  signal m11_a, m11_b : std_logic;
-  signal m21_a, m21_b : std_logic;
-  signal m31_a, m31_b : std_logic;
+  signal last_pixel : std_logic;
+
+  signal da : std_logic_vector(2 downto 0); 
+  signal db : std_logic_vector(2 downto 0);
+  signal dc : std_logic_vector(2 downto 0);
+  signal dd : std_logic_vector(2 downto 0);
+  signal de : std_logic_vector(2 downto 0);
 
   signal r0 : unsigned(7 downto 0) := "00000000";
   signal r1 : unsigned(8 downto 0) := "000000000";
@@ -82,11 +81,9 @@ architecture main of kirsch is
   signal r3 : unsigned(9 downto 0) := "0000000000";
   signal r4_a : unsigned(12 downto 0):= "0000000000000";
   signal r4_b : unsigned(12 downto 0):= "0000000000000";
-  
-  signal r_out: signed(14 downto 0):= "000000000000000";
 
-  signal ri_row_a, ri_row_b : unsigned(7 downto 0) := "00000000";
-  signal ri_col_a, ri_col_b : unsigned(7 downto 0) := "00000000";
+  signal r_out : signed(14 downto 0):= "000000000000000";
+
 begin
   row0: entity WORK.mem
     port map (
@@ -115,25 +112,43 @@ begin
       q       => row2_read
     );
 
-process
+process (clk, reset)
 begin
-wait until rising_edge(clk);
   if (reset = '1') then
     -- this is in reset for both the mode and our internal statemachine
     state   <= resetState;
     o_mode  <= o_reset;
+    last_pixel <= '0';
 
     col_index <= to_unsigned(0, 8);
     row_index <= to_unsigned(0, 8);
 
     row_wr_en <= to_unsigned(1, 3);
-  else
+
+    ra <= to_unsigned(0,8);
+    rb <= to_unsigned(0,8);
+    rc <= to_unsigned(0,8);
+    rd <= to_unsigned(0,8);
+    re <= to_unsigned(0,8);
+    rf <= to_unsigned(0,8);
+    rg <= to_unsigned(0,8);
+    rh <= to_unsigned(0,8);
+    ri <= to_unsigned(0,8);
+
+    rdy_calc <= '0';
+
+    o_row <= to_unsigned(0,8);
+    o_col <= to_unsigned(0,8);
+
+  elsif (clk'EVENT and clk='1') then 
     case state is
       when resetState =>
         o_mode <= o_idle;
+        rdy_calc <= '0';
         if (i_valid = '1') then 
           state <= firstFill;
-          col_index <= col_index + 1;
+          col_index <= to_unsigned(1,8);
+          o_col <= to_unsigned(1,8);
         end if;
 
       -- need to fill up to at least the first 2 row
@@ -142,12 +157,14 @@ wait until rising_edge(clk);
         rdy_calc <= '0';
 
         if (i_valid = '1') then
-          col_index <= col_index + 1;
+          col_index <= col_index + to_unsigned(1, 8);
+          o_col <= col_index + to_unsigned(1, 8);
 
           -- at the end of row
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
-            row_index <= row_index + 1;
+            row_index <= row_index + to_unsigned(1, 8);
+            o_row <= row_index + to_unsigned(1, 8);
 
             if (row_index = to_unsigned(1, 8)) then
               state <= fetchPixel;
@@ -156,18 +173,19 @@ wait until rising_edge(clk);
         end if;
       
       -- wait for this to fill the column 0 and then start calculating
-      when others =>
+      when fetchPixel =>
         -- finished filling up column 0
         if (i_valid = '1') then 
-          col_index <= col_index + 1;
+          col_index <= col_index + to_unsigned(1, 8);
+          o_col <= col_index + to_unsigned(1, 8);
           rdy_calc <= '1';
 
           -- at the end of row
           if (col_index = to_unsigned(255, 8)) then
             row_wr_en <= row_wr_en rol 1;
-            row_index <= row_index + 1;
+            row_index <= row_index + to_unsigned(1, 8);
+            o_row <= row_index + to_unsigned(1, 8);
           end if;
-
           -- if we are filling column 0/1, do not start calculation
           if (col_index = to_unsigned(0, 8)) then
             rg <= unsigned(i_pixel);
@@ -184,9 +202,11 @@ wait until rising_edge(clk);
             ri <= rd;
             rg <= rf;
             rf <= re;
-            ri_col_a <= col_index-2;
-            ri_row_a <= row_index-1;
             re <= unsigned(i_pixel);
+            if (col_index = to_unsigned(255,8) and row_index = to_unsigned(255,8)) then
+              last_pixel <= '1';
+              state <= result;
+            end if;
           end if;
 
           case row_wr_en is
@@ -239,237 +259,242 @@ wait until rising_edge(clk);
               end if;
           end case;
         end if;
+
+        when others => 
+          if (cycle = cycle_03) then
+            last_pixel <= '0';
+            o_mode <= o_idle;
+            state <= resetState;
+            rdy_calc <= '0';
+          end if;
     end case;
   end if;
 end process;
 
-process
-  begin
-  wait until rising_edge(clk);
+process  (clk, reset)
+begin
+  if (reset = '1') then 
+    da <= "000"; 
+    db <= "000";
+    dc <= "000";
+    dd <= "000";
+    de <= "000";
+
+    first_process <= '1';
+
+    r0 <= to_unsigned(0,8);
+    r1 <= to_unsigned(0,9);
+    r2 <= to_unsigned(0,10);
+    r3 <= to_unsigned(0,10);
+    r4_a <= to_unsigned(0,13);
+    r4_b <= to_unsigned(0,13);
+
+  elsif (clk'EVENT and clk='1') then 
+
     if (rdy_calc) then
-      r2 <= "00"&r0 + r1;
-      r4_a <= "0000"&r1 + r4_a;
-      r4_b <= "0000"&r1 + r4_b;
+      o_valid <= '0';
+      o_edge <= '0';
+      o_dir <= "000";
 
       case cycle is 
         when cycle_00 => 
           cycle <= cycle_01;
           if rg >= rb then 
             r0 <= rg;
-            m01_a <= '0';
+            da <= "001"; --W
           else 
             r0 <= rb;
-            m01_a <= '1';
+            da <= "100"; --NW
           end if;
 
-          if r3 >= r2 then 
-            m42_b <= '0';
-          else
+          if r3 < r2 then 
             r3 <= r2;
-            m42_b <= '1';
+            de <= dc;
           end if;
 
           r1 <= "0"&ra + rh;
+          r2 <= "00"&r0 + r1;
           r4_a <= (others => '0');
+          r4_b <= "0000"&r1 + r4_b;
           
         when cycle_01 => 
           cycle <= cycle_02;
 
-          ri_col_b <= ri_col_a;
-          ri_row_b <= ri_row_a;
-
           if ra >= rd then 
             r0 <= ra;
-            m11_a <= '0';
+            db <= "010"; --N
           else 
             r0 <= rd;
-            m11_a <= '1';
+            db <= "110"; --NE
           end if;
 
-          if r3 >= r2 then 
-            
-            m52_b <= '0';
-          else 
+          if r3 < r2 then 
             r3 <= r2;
-            m52_b <= '1';
+            de <= dd;
           end if;
 
           r1 <= "0"&rb + rc;
-          r_out <= signed(unsigned(r4_b&"00")) - signed(unsigned(r4_b));
+          r2 <= "00"&r0 + r1;
+          r4_b <= r4_b;
+          r4_a <= "0000"&r1 + r4_a;
 
+          r_out <= signed(unsigned(r4_b&"00")) - signed(unsigned(r4_b));
+          
         when cycle_02 => 
           cycle <= cycle_03;
 
           if rc >= rf then
             r0 <= rc;
-            m21_a <= '0';
+            dc <= "000"; --E
           else 
             r0 <= rf;
-            m21_a <= '1';
+            dc <= "101"; --SE
           end if;
 
           r3 <= r2;
+          de <= da;
           
           r1 <= "0"&re + rd;
+          r2 <= "00"&r0 + r1;
+          r4_a <= "0000"&r1 + r4_a;
+
+          -- output signal for "red" set
           if (first_process = '1')  then
             first_process <= '0';
           else 
             o_valid <= '1';
-            if ((signed(unsigned("0"&r3&"000")) - r_out) > to_signed(383, 13)) then
+            if signed(unsigned("0"&r3&"000")) - r_out > to_signed(383, 13) then
               o_edge <= '1';
-              o_dir(2) <= (m01_b and not m32_b and not m42_b and not m52_b) or 
-                          (m11_b and m32_b and not m42_b and not m52_b) or
-                          (m21_b and m42_b and not m52_b) or
-                          (m31_b and m52_b);
-              o_dir(1) <= (m32_b and not m42_b and not m52_b) or m52_b;
-              o_dir(0) <= (not m01_b and not m32_b and not m42_b and not m52_b) or
-                          (m21_b and m42_b and not m52_b) or m52_b;
-                          
+              o_dir <= de;
             else 
               o_edge <= '0';
               o_dir <= "000";
             end if;
-
-            o_row  <= ri_row_b;
-            o_col  <= ri_col_b;        
+        
           end if;
 
         when cycle_03 => 
           if (i_valid) then
             cycle <= cycle_04;
-          end if;
-            
+
           if re >= rh then 
             r0 <= re;
-            m31_a <= '0';
+            dd <= "011"; --S
           else 
             r0 <= rh;
-            m31_a <= '1';
+            dd <= "111"; --SW
           end if;
 
-          if r3 >= r2 then 
-            
-            m32_a <= '0';
-          else 
+          if r3 < r2 then 
             r3 <= r2;
-            m32_a <= '1';
+            de <= db;
           end if;
 
           r1 <= "0"&rf + rg;
+          r2 <= "00"&r0 + r1;
           r4_b <= (others => '0');
-
-          o_edge <= '0';
-          o_dir <= "000";
-          o_valid <= '0';
+          r4_a <= "0000"&r1 + r4_a;
+          end if;
+          if (last_pixel) then
+            cycle <= cycle_00;
+          end if;
 
         when cycle_04 => 
           cycle <= cycle_05;
 
           if rg >= rb then 
             r0 <= rg;
-            m01_b <= '0';
+            da <= "001"; --W
           else 
             r0 <= rb;
-            m01_b <= '1';
+            da <= "100"; --NW
           end if;
 
-          if r3 >= r2 then 
-            
-            m42_a <= '0';
-          else 
+          if r3 < r2 then 
             r3 <= r2;
-            m42_a <= '1';
+            de <= dc;
           end if;
 
           r1 <= "0"&ra + rh;
+          r2 <= "00"&r0 + r1;
           r4_b <= (others => '0');
+          r4_a <= "0000"&r1 + r4_a;
 
         when cycle_05 =>
           cycle <= cycle_06;
 
-          ri_col_b <= ri_col_a;
-          ri_row_b <= ri_row_a;
-
           if ra >= rd then 
             r0 <= ra;
-            m11_b <= '0';
+            db <= "010"; --N
           else 
             r0 <= rd;
-            m11_b <= '1';
+            db <= "110"; --NE
           end if;
 
-          if r3 >= r2 then 
-            
-            m52_a <= '0';
-          else 
+          if r3 < r2 then 
             r3 <= r2;
-            m52_a <= '1';
+            de <= dd;
           end if;
 
           r1 <= "0"&rb + rc;
-          r_out <= signed(unsigned(r4_a&"00")) - signed(unsigned(r4_a));
+          r2 <= "00"&r0 + r1;
+          r4_a <= r4_a;
+          r4_b <= "0000"&r1 + r4_b;
           
+          r_out <= signed(unsigned(r4_a&"00")) - signed(unsigned(r4_a));
 
         when cycle_06 => 
           cycle <= cycle_07;
 
           if rc >= rf then 
             r0 <= rc;
-            m21_b <= '0';
+            dc <= "000"; --E
           else 
             r0 <= rf;
-            m21_b <= '1';
+            dc <= "101"; --SE
           end if;
           r3 <= r2;
+          de <= da;
 
           r1 <= "0"&re + rd;
+          r2 <= "00"&r0 + r1;
+          r4_b <= "0000"&r1 + r4_b;
+
           -- output signal for "black" set
           o_valid <= '1';
-          if ((signed(unsigned("0"&r3&"000")) - r_out) > to_signed(383, 13)) then
+          if (signed(unsigned("0"&r3&"000")) - r_out) > to_signed(383, 13) then
             o_edge <= '1';
-            o_dir(2) <= (m01_a and not m32_a and not m42_a and not m52_a) or 
-                        (m11_a and m32_a and not m42_a and not m52_a) or
-                        (m21_a and m42_a and not m52_a) or
-                        (m31_a and m52_a);
-            o_dir(1) <= (m32_a and not m42_a and not m52_a) or m52_a;
-            o_dir(0) <= (not m01_a and not m32_a and not m42_a and not m52_a) or
-                        (m21_a and m42_a and not m52_a) or m52_a;
+            o_dir <= de;
           else 
             o_edge <= '0';
             o_dir <= "000";
           end if;
 
-          o_row  <= ri_row_b;
-          o_col  <= ri_col_b;
-
         when others => 
-          if (i_valid) then
+          if (i_valid or last_pixel) then
             cycle <= cycle_00;
-          end if;
 
           if re >= rh then 
             r0 <= re;
-            m31_b <= '0';
+            dd <= "011"; --S
           else 
             r0 <= rh;
-            m31_b <= '1';
+            dd <= "111"; --SW
           end if;
 
-          if r3 >= r2 then 
-            
-            m32_b <= '0';
-          else 
+          if r3 < r2 then 
             r3 <= r2;
-            m32_b <= '1';
+            de <= db;
           end if;
           
           r1 <= "0"&rf + rg;
+          r2 <= "00"&r0 + r1;
           r4_a <= (others => '0');
-
-          o_edge <= '0';
-          o_dir <= "000";
-          o_valid <= '0';
+          r4_b <= "0000"&r1 + r4_b;
+          end if;
       end case;
     end if;
-  end process;
+  end if;
+end process;
+
 end architecture main;
