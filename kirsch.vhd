@@ -260,15 +260,16 @@ process (clk, reset)
       o_dir <= "000";
 
       case cycle is 
-        when state_00 => 
+        when state_00 => --0,4
           cycle <= state_01;
 
           r0 <= rb when rg < rb else rg;
           r1 <= "0"&ra + rh;
           r2 <= "00"&r0 + r1;
+
           r3 <= r2 when r3 < r2 else r3;
 
-          de <= de when r3 < r2 else dc;
+          de <= dc when r3 < r2 else de;
           da <= "100" when rg < rb else "001";
 
           if (is_a) then 
@@ -279,12 +280,13 @@ process (clk, reset)
             r4_b <= (others => '0');
           end if;
         
-        when state_01 => 
+        when state_01 => --1,5
           cycle <= state_02;
 
           r0 <= rd when ra < rd else ra;
           r1 <= "0"&rb + rc;
           r2 <= "00"&r0 + r1;
+
           r3 <= r2 when r3 < r2 else r3;
 
           db <= "110" when ra < rd else "010";
@@ -300,12 +302,13 @@ process (clk, reset)
             r_out <= signed(unsigned(r4_a&"00")) - signed(unsigned(r4_a));
           end if;
 
-        when state_02 => 
+        when state_02 => --2,6
           cycle <= state_03;
 
           r0 <= rf when rc < rf else rc;
           r1 <= "0"&re + rd;
           r2 <= "00"&r0 + r1;
+          
           r3 <= r2;
                     
           de <= da;
@@ -330,7 +333,7 @@ process (clk, reset)
             end if;    
           end if;
 
-        when others => 
+        when others => --3,7
           r0 <= rh when re < rh else re;
           r1 <= "0"&rf + rg;
           r2 <= "00"&r0 + r1;
