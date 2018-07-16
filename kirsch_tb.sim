@@ -42,28 +42,28 @@ if { $gui_mode } {
   add wave                 sim:/kirsch_tb/o_edge
   add wave                 sim:/kirsch_tb/o_dir
 
-  add wave                 sim:/kirsch_tb/uut/row_index
-  add wave                 sim:/kirsch_tb/uut/col_index
+  # add wave                 sim:/kirsch_tb/uut/row_index
+  # add wave                 sim:/kirsch_tb/uut/col_index
 
-  add wave                 sim:/kirsch_tb/uut/cycle
-  add wave -radix unsigned sim:/kirsch_tb/uut/ra
-  add wave -radix unsigned sim:/kirsch_tb/uut/rb
-  add wave -radix unsigned sim:/kirsch_tb/uut/rc
-  add wave -radix unsigned sim:/kirsch_tb/uut/rd
-  add wave -radix unsigned sim:/kirsch_tb/uut/re
-  add wave -radix unsigned sim:/kirsch_tb/uut/rf
-  add wave -radix unsigned sim:/kirsch_tb/uut/rg
-  add wave -radix unsigned sim:/kirsch_tb/uut/rh
-  add wave -radix unsigned sim:/kirsch_tb/uut/ri
+  # add wave                 sim:/kirsch_tb/uut/cycle
+  # add wave -radix unsigned sim:/kirsch_tb/uut/ra
+  # add wave -radix unsigned sim:/kirsch_tb/uut/rb
+  # add wave -radix unsigned sim:/kirsch_tb/uut/rc
+  # add wave -radix unsigned sim:/kirsch_tb/uut/rd
+  # add wave -radix unsigned sim:/kirsch_tb/uut/re
+  # add wave -radix unsigned sim:/kirsch_tb/uut/rf
+  # add wave -radix unsigned sim:/kirsch_tb/uut/rg
+  # add wave -radix unsigned sim:/kirsch_tb/uut/rh
+  # add wave -radix unsigned sim:/kirsch_tb/uut/ri
 
-  add wave -radix unsigned sim:/kirsch_tb/uut/r0
-  add wave -radix unsigned sim:/kirsch_tb/uut/r3
+  # add wave -radix unsigned sim:/kirsch_tb/uut/r0
+  # add wave -radix unsigned sim:/kirsch_tb/uut/r3
 
-  add wave -radix unsigned sim:/kirsch_tb/uut/r1
-  add wave -radix unsigned sim:/kirsch_tb/uut/r2
-  add wave -radix unsigned sim:/kirsch_tb/uut/r4_a
-  add wave -radix unsigned sim:/kirsch_tb/uut/r4_b
-  add wave -radix decimal sim:/kirsch_tb/uut/r_out
+  # add wave -radix unsigned sim:/kirsch_tb/uut/r1
+  # add wave -radix unsigned sim:/kirsch_tb/uut/r2
+  # add wave -radix unsigned sim:/kirsch_tb/uut/r4_a
+  # add wave -radix unsigned sim:/kirsch_tb/uut/r4_b
+  # add wave -radix decimal sim:/kirsch_tb/uut/r_out
   #------------------------------------------------------
 
 }
