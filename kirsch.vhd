@@ -320,18 +320,8 @@ process (clk, reset)
             r4_b <= "0000"&r1 + r4_b;
           end if;
           
-          if (first_process)  then
-            first_process <= '0';
-          else 
-            o_valid <= '1';
-            if ((signed(unsigned("0"&r3&"000")) - r_out) > to_signed(383, 13)) then
-              o_edge <= '1';
-              o_dir <= de;
-            else 
-              o_edge <= '0';
-              o_dir <= "000";
-            end if;    
-          end if;
+          r_out <= (signed(unsigned("0"&r3&"000")) - r_out);
+          o_dir <= de;
 
         when others => --3,7
           r0 <= rh when re < rh else re;
@@ -353,6 +343,14 @@ process (clk, reset)
             r4_a <= (others => '0');
             r4_b <= "0000"&r1 + r4_b;
           end if;
+
+          o_valid <= '1';
+            if (r_out > to_signed(383, 13)) then
+              o_edge <= '1';
+            else 
+              o_edge <= '0';
+              o_dir <= "000";
+            end if;    
 
           is_a <= not is_a;
       end case;
